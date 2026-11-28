@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:50:26.289Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap combobox \"key\" in \"press_key\"",
+        "target": {
+          "role": "combobox",
+          "name": "key",
+          "placeholder": "Press a key or combination",
+          "within": "press_key"
+        }
+      },
+      {
+        "name": "pressKey",
+        "summary": "press \"F4\" on the focused field",
+        "key": "F4"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::press_key%20presses%20the%20key%20the%20page%20receives",
+      "targetId": "chromium",
+      "instructionDigest": "6cbc9d2cf416fca1fd5e31eb41d0cdbd3809d38a758c65668e98a100b1b78162",
+      "paramsDigest": "727ea3eead63f23bf48ddec353379c7841ab947e7b4562091b8f8da52301c2bd",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I set the press_key tool's key field to F4. I focused the combobox, which captures key presses, and pressed F4. It now shows value \"F4\". I did not run the tool.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "key help",
+        "text": "Press a key or combo. Esc to search."
+      },
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination",
+        "value": "F4"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "combobox",
+        "name": "key",
+        "placeholder": "Press a key or combination"
+      }
+    ],
+    "endWaitMs": 14539,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

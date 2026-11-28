@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:44:47.294Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "switchTab",
+        "summary": "switch to tab 2",
+        "tab": 1
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Tools\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Tools",
+          "within": "Model"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::external::with%20the%20inspector%20option%20on::the%20page%27s%20own%20Peek%20lists%20under%20Peek%20tools%2C%20and%20its%20tool%20page%20reads%20it",
+      "targetId": "chromium",
+      "instructionDigest": "425c310f80b361ee9b81d40c3249d58293d4f36530a6743062ed02b33f8bc788",
+      "paramsDigest": "14a06b9d370cf096b7b97128403a7fd10999c33d827b1eb400b84cb0103b97e4",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "In the Inspector tab (tab 2), I tapped the \"Tools\" lens button. It is now pressed, and the navigator lists the tool groups: Page object tools, Custom tools, Browser tools, Peek tools and Agent tools.",
+    "startPath": "/session.html?external=",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "ayme"
+      },
+      {
+        "text": "ayme-e2e"
+      },
+      {
+        "role": "button",
+        "name": "Theme: System. Switch to Light."
+      },
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Structure"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "10 refs"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Groceries"
+      },
+      {
+        "role": "textbox",
+        "name": "New item"
+      },
+      {
+        "role": "checkbox",
+        "name": "Urgent"
+      },
+      {
+        "role": "button",
+        "name": "Add item"
+      },
+      {
+        "role": "listitem",
+        "name": "Milk"
+      },
+      {
+        "role": "document",
+        "name": "Inspector fixture with a session-mounted Inspector"
+      },
+      {
+        "text": "New item"
+      },
+      {
+        "text": "Urgent"
+      }
+    ],
+    "endWaitMs": 14556,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

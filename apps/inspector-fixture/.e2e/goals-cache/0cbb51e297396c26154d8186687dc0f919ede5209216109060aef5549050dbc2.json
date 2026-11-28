@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:27:27.450Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"fill_form\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "fill_form"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Pressed Run on fill_form. Last result reads \"Succeeded · 382 ms · 1 interaction\" and Runs went to 1. The run's arguments were {\"fields\":[{\"name\":\"Urgent\",\"type\":\"checkbox\",\"value\":\"true\"}]}, and its one interaction was setChecked on ListPage.newItemFields[1].",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "0 changed"
+      },
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Succeeded"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "role": "figure",
+        "name": "Arguments",
+        "text": "{\"fields\":[{\"name\":\"Urgent\",\"type\":\"checkbox\",\"value\":\"true\"}]}"
+      },
+      {
+        "text": "setChecked"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "1 changed"
+      },
+      {
+        "role": "button",
+        "name": "Undo all"
+      },
+      {
+        "name": "Fill order",
+        "text": "1"
+      },
+      {
+        "role": "button",
+        "name": "Undo the change to Urgent"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      },
+      {
+        "role": "listitem",
+        "name": "Move Urgent Fill order Urgent checkbox Undo the change to Urgent Urgent Checked"
+      }
+    ],
+    "endWaitMs": 14769,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

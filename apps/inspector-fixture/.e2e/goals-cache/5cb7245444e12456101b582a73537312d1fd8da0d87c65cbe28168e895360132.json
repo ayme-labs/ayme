@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T10:26:36.510Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap radio \"[1] Eggs\" in \"ListItem.mark\"",
+        "target": {
+          "role": "radio",
+          "name": "[1] Eggs",
+          "within": "ListItem.mark"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::a%20collection%20action%20runs%20on%20the%20item%20and%20choice%20picked%20with%20the%20mouse",
+      "targetId": "chromium",
+      "instructionDigest": "4beb9d5b88a9f5260f567797aef90c16549f4b20b29df4238471dff7afb2887d",
+      "paramsDigest": "bf2cca3cc10d1a53a6032cf96d6810284e822d7fda1c535d106d2c55934af8c9",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I tapped the \"[1] Eggs\" radio in the ListItem.mark Instance group. It is now checked and \"[0] Milk\" is unchecked. I did not run the tool.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "radio",
+        "name": "[0] Milk"
+      },
+      {
+        "role": "radio",
+        "name": "[1] Eggs",
+        "states": [
+          "checked"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "radio",
+        "name": "[0] Milk",
+        "states": [
+          "checked"
+        ]
+      },
+      {
+        "role": "radio",
+        "name": "[1] Eggs"
+      }
+    ],
+    "endWaitMs": 12849,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

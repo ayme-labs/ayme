@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:34:06.450Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Pick an element on the page\" in \"fill\"",
+        "target": {
+          "role": "button",
+          "name": "Pick an element on the page",
+          "within": "fill"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/refPicking.goal.ts::external::a%20ref%20picked%20by%20clicking%20the%20page%20is%20the%20element%20the%20tool%20acts%20on",
+      "targetId": "chromium",
+      "instructionDigest": "993769b9a102c1f7c2278edc34241d3b96fdac2b53d8269f18ddd39bec5ec4cb",
+      "paramsDigest": "a803210019b0f8e95fe640de0371165f55cc88e019390f6c6bc9e9351eec4919",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I tapped \"Pick an element on the page\" for the target field. The picker is now active: the button shows pressed, the hint \"Click a text field to fill. Esc cancels.\" appears, and a \"Cancel picking\" button is shown.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Pick an element on the page",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "Click a text field to fill. Esc cancels."
+      },
+      {
+        "role": "button",
+        "name": "Cancel picking"
+      },
+      {
+        "text": "Click a text field to fill"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Pick an element on the page"
+      }
+    ],
+    "endWaitMs": 15049,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

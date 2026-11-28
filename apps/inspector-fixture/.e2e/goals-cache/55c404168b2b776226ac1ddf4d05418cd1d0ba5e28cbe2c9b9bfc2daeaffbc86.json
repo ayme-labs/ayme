@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:06:27.921Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Clear\" in \"Runs · 1\"",
+        "target": {
+          "role": "button",
+          "name": "Clear",
+          "within": "Runs · 1"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::Clear%20empties%20Runs%2C%20and%20the%20run%20after%20it%20is%20the%20only%20one%20shown",
+      "targetId": "chromium",
+      "instructionDigest": "f3e4391dcdf52bcfe61c4b2e66226801efd1d740ed1e6fdd92d527f7a0350291",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I tapped Clear in Runs. The header now reads \"Runs · 0\", the timeline is gone, and the panel shows \"No runs yet. Runs from this panel and from agents show here.\" Clear is now disabled.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs yet. Runs from this panel and from agents show here."
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Succeeded"
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      },
+      {
+        "role": "button",
+        "name": "Result"
+      },
+      {
+        "role": "button",
+        "name": "Copy"
+      },
+      {
+        "role": "list",
+        "name": "Runs timeline"
+      }
+    ],
+    "endWaitMs": 12874,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

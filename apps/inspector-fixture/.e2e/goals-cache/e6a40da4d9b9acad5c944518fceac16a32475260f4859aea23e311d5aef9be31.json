@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:44:01.500Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Result\" in \"peek\"",
+        "target": {
+          "role": "button",
+          "name": "Result",
+          "within": "peek"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::inline::with%20the%20inspector%20option%20on::the%20page%27s%20own%20Peek%20lists%20under%20Peek%20tools%2C%20and%20its%20tool%20page%20reads%20it",
+      "targetId": "chromium",
+      "instructionDigest": "7e9426a6d7b3ef2738954a964b091dd82a9f81a0c735cb2ae6083c9a49c399d3",
+      "paramsDigest": "114112add126d14fedd95a5f8928b7be65e2efe4527cea103d6fd385ca6b388f",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped Result on the peek.list run in Runs. It expanded and shows a Result figure containing {\"name\":\"list\",\"instances\":[{\"values\":{\"items\":[\"Milk\"]}}]}.",
+    "startPath": "/session.html",
+    "endPath": "/session.html",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Result",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "{ \"name\": \"list\", \"instances\": [ { \"values\": { \"items\": [ \"Milk\" ] } } ] }"
+      },
+      {
+        "role": "figure",
+        "name": "Result"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Result"
+      }
+    ],
+    "endWaitMs": 13678,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

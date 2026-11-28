@@ -83,8 +83,8 @@ which the agent does as it sees fit, except where
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
 a step that changes no control: e2e saves
 nothing for it, so it calls the model on every run, and a warm run needs the
-login too. The external placement's `ayme mcp` gets a port derived from the
-checkout's path, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
+login too. The external placement's `ayme mcp` gets the fixed port
+`e2e.goals.config.ts` names, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
 the mirror check (alone: `pnpm check:goal-mirror`), and `pnpm test` runs its
 own tests.
 

@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:27:27.427Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "switchTab",
+        "summary": "switch to tab 2",
+        "tab": 1
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Tools\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Tools",
+          "within": "Model"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"fill_form\"",
+        "target": {
+          "role": "button",
+          "name": "fill_form"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "7169931673343803633295eaf76477c893de44f1aea0b4d0383d5611a79a23b9",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "In the inspector tab (tab 2), Tools lens, opened the fill_form browser tool. Its detail panel shows the fill_form heading, a \"Browser tool\" label, a form with the New item and Urgent fields, and a Run button.",
+    "startPath": "/?external=",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "0 changed"
+      },
+      {
+        "role": "heading",
+        "name": "ayme"
+      },
+      {
+        "text": "ayme-e2e"
+      },
+      {
+        "role": "button",
+        "name": "Theme: System. Switch to Light."
+      },
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Structure"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Groceries"
+      },
+      {
+        "role": "button",
+        "name": "Add item"
+      },
+      {
+        "role": "document",
+        "name": "Inspector fixture"
+      }
+    ],
+    "endWaitMs": 13149,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

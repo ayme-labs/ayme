@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-28T09:16:02.172Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "type",
+        "summary": "type \"Empty the list\" into textbox \"goal\"",
+        "target": {
+          "role": "textbox",
+          "name": "goal"
+        },
+        "value": "Empty the list"
+      },
+      {
+        "name": "type",
+        "summary": "type \"3\" into spinbutton \"maxSteps\" in \"goal\"",
+        "target": {
+          "role": "spinbutton",
+          "name": "maxSteps",
+          "within": "goal"
+        },
+        "value": "3"
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"goal\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "goal"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::goal%20runs%20from%20the%20panel%20and%20shows%20in%20Runs%20with%20the%20Runs%20its%20steps%20executed%20and%20its%20Handover%20result",
+      "targetId": "chromium",
+      "instructionDigest": "2c640c9f5d3ca14c6d3dcfd677e01581452d916ada5b348f67f9804e9cb95b59",
+      "paramsDigest": "072ce7d1e59e30ffa70a6133aef43ba251ead629ce7607767214e83ecb40391b",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I ran the goal tool with goal \"Empty the list\" and maxSteps 3. The run succeeded in 318 ms with 1 interaction. It called ListPage.clear, which clicked the Clear button, and that call also succeeded. The Runs timeline shows 1 run.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "text": "9 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 3"
+      },
+      {
+        "role": "textbox",
+        "name": "goal",
+        "value": "Empty the list"
+      },
+      {
+        "role": "spinbutton",
+        "name": "maxSteps",
+        "value": "3"
+      },
+      {
+        "role": "button",
+        "name": "Show in runs"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Succeeded"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "text": "10 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 4"
+      },
+      {
+        "text": "ListItem"
+      },
+      {
+        "text": ".mark"
+      },
+      {
+        "role": "textbox",
+        "name": "goal"
+      },
+      {
+        "role": "spinbutton",
+        "name": "maxSteps"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 0",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "text": "No runs for this selection yet. Switch to All to see every run."
+      }
+    ],
+    "endWaitMs": 17585,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

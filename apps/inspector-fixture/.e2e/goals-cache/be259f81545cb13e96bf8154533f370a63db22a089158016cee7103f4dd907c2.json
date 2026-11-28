@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:26:52.798Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "switchTab",
+        "summary": "switch to tab 2",
+        "tab": 1
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"All\" in \"This page\"",
+        "target": {
+          "role": "button",
+          "name": "All",
+          "within": "This page"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external::a%20non-POM%20target%20keeps%20its%20accessible%20name%20after%20clicking%20removes%20it%20and%20after%20reload",
+      "targetId": "chromium",
+      "instructionDigest": "87c37a19e0680335298b7fe7e0c2cc8e7fb2706daee7fdd3a84633517a36f1dd",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "In the inspector tab (tab 2), I tapped \"All\" in the Runs scope group. \"All\" is now pressed and \"This page\" is not. The Runs list still shows 1 run (snapshot).",
+    "startPath": "/?external=",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "ayme"
+      },
+      {
+        "text": "ayme-e2e"
+      },
+      {
+        "role": "button",
+        "name": "Theme: System. Switch to Light."
+      },
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Structure"
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "text": "10 refs"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "Groceries"
+      },
+      {
+        "role": "textbox",
+        "name": "New item"
+      },
+      {
+        "role": "checkbox",
+        "name": "Urgent"
+      },
+      {
+        "role": "button",
+        "name": "Add item"
+      },
+      {
+        "role": "button",
+        "name": "Dismiss notice"
+      },
+      {
+        "role": "document",
+        "name": "Inspector fixture"
+      },
+      {
+        "text": "New item"
+      },
+      {
+        "text": "Urgent"
+      }
+    ],
+    "endWaitMs": 13612,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

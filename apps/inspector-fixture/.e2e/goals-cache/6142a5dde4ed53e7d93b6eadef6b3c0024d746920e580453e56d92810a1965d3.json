@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:36:41.700Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"page_objects\"",
+        "target": {
+          "role": "button",
+          "name": "page_objects"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::external::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "a5cfbe398d37ef8c48315f5120dbb13a42f9be152cc3805769d2d2e451111434",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I selected \"page_objects\" in the Tools lens. The detail panel now shows an article titled \"page_objects\", labelled \"Agent tool\", with its description and a Run button, which I did not press. \"What the model sees\" stayed expanded and shows an input schema with no properties.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "page_objects"
+      },
+      {
+        "text": "Returns the Page Objects on the page now as a tree: each one's class, its declared children with their values, and the id (po<n>) of each one that has a root."
+      },
+      {
+        "text": "page_objects"
+      },
+      {
+        "role": "article",
+        "name": "page_objects"
+      },
+      {
+        "role": "form",
+        "name": "page_objects"
+      },
+      {
+        "name": "page_objects input schema"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "snapshot"
+      },
+      {
+        "text": "Return the current live structural page state together with compact POM capability definitions known to ayme. `structure` is the current page snapshot. Each definition starts with its class name and an optional // description, then lists the POM's declared children and its actions. A bare member is…"
+      },
+      {
+        "text": "Arguments"
+      },
+      {
+        "role": "button",
+        "name": "Form",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "JSON"
+      },
+      {
+        "text": "names"
+      },
+      {
+        "text": "string[]"
+      },
+      {
+        "text": "optional"
+      }
+    ],
+    "endWaitMs": 16412,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

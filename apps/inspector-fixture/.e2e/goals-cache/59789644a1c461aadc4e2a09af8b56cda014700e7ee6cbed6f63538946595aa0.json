@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:51:05.776Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Add from tree\" in \"Container\"",
+        "target": {
+          "role": "button",
+          "name": "Add from tree",
+          "within": "Container"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap treeitem \"e8 button \\\"Add item\\\"\" in \"Container\"",
+        "target": {
+          "role": "treeitem",
+          "name": "e8 button \"Add item\"",
+          "within": "Container"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap treeitem \"e5 textbox \\\"New item\\\"\" in \"Container\"",
+        "target": {
+          "role": "treeitem",
+          "name": "e5 textbox \"New item\"",
+          "within": "Container"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::generate_locator%20offers%20the%20locator%20of%20each%20target%20in%20each%20group",
+      "targetId": "chromium",
+      "instructionDigest": "22335e0227257f9947edcb1a70fbc8ce582fdb57e8e3c2ecdc6368cd44723b73",
+      "paramsDigest": "03b9ca5e19b913bcfd1cae3700140fe00f5f54d8df74f90abe8f5af96fc81914",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Opened \"Add from tree\" for group 1 and selected e8 and e5. Targets of group 1 now lists e8 (.addItemButton) and e5 (.newItemInput).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "text": "e8 button \"Add item\""
+      },
+      {
+        "text": ".addItemButton"
+      },
+      {
+        "role": "button",
+        "name": "Remove e8"
+      },
+      {
+        "text": "e5 textbox \"New item\""
+      },
+      {
+        "text": ".newItemInput"
+      },
+      {
+        "role": "button",
+        "name": "Remove e5"
+      },
+      {
+        "role": "button",
+        "name": "Add from tree",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "textbox",
+        "name": "Search targets for group 1",
+        "placeholder": "Search refs, roles and names"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Add from tree"
+      }
+    ],
+    "endWaitMs": 15686,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

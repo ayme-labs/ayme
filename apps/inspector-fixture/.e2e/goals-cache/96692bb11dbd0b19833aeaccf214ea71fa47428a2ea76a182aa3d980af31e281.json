@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:51:05.778Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Add from tree\" in \"Container\" (2 of 2)",
+        "target": {
+          "role": "button",
+          "name": "Add from tree",
+          "within": "Container",
+          "position": {
+            "index": 1,
+            "of": 2
+          }
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap treeitem \"e9 button \\\"Clear\\\"\" in \"Container\"",
+        "target": {
+          "role": "treeitem",
+          "name": "e9 button \"Clear\"",
+          "within": "Container"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::generate_locator%20offers%20the%20locator%20of%20each%20target%20in%20each%20group",
+      "targetId": "chromium",
+      "instructionDigest": "22335e0227257f9947edcb1a70fbc8ce582fdb57e8e3c2ecdc6368cd44723b73",
+      "paramsDigest": "d46a87d68dbaf1834ef7af737bf5de64b79c049bf88cd7c1c8222469e79a6f74",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Opened \"Add from tree\" for group 2 and selected e9. Targets of group 2 now lists e9 (.clearButton).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "text": "e9 button \"Clear\""
+      },
+      {
+        "text": ".clearButton"
+      },
+      {
+        "role": "button",
+        "name": "Remove e9"
+      },
+      {
+        "role": "textbox",
+        "name": "Search targets for group 2",
+        "placeholder": "Search refs, roles and names"
+      },
+      {
+        "text": "locator('ayme-ref=e8')"
+      },
+      {
+        "role": "list",
+        "name": "Targets of group 2"
+      },
+      {
+        "role": "listitem",
+        "name": "e9"
+      },
+      {
+        "role": "tree",
+        "name": "Add targets to group 2"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "textbox",
+        "name": "Search targets for group 1",
+        "placeholder": "Search refs, roles and names"
+      },
+      {
+        "role": "tree",
+        "name": "Add targets to group 1"
+      },
+      {
+        "role": "treeitem",
+        "name": "e5 textbox \"New item\"",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "treeitem",
+        "name": "e8 button \"Add item\"",
+        "states": [
+          "selected"
+        ]
+      },
+      {
+        "role": "treeitem",
+        "name": "e9 button \"Clear\""
+      }
+    ],
+    "endWaitMs": 13683,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

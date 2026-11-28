@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:57:29.302Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Open ayme\"",
+        "target": {
+          "role": "button",
+          "name": "Open ayme"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/stacking.goal.ts::over%20a%20page%20widget%20at%20z-index%20101::the%20collapsed%20logo%20stays%20on%20top%20and%20opens%20the%20panel",
+      "targetId": "chromium",
+      "instructionDigest": "e519efd116955ad94d189523670bdc12288af553d75df9a69cfc9f474a0e55b0",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped the \"Open ayme\" button (the collapsed logo); the ayme inspector panel is expanded again with its full contents.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the left edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the right edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-right corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-right corner"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Open ayme"
+      }
+    ],
+    "endWaitMs": 12665,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

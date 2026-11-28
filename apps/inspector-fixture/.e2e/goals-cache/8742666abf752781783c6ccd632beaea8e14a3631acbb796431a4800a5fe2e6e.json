@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T19:57:18.657Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Layout: Dock to bottom\"",
+        "target": {
+          "role": "button",
+          "name": "Layout: Dock to bottom"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap menuitemradio \"Floating\"",
+        "target": {
+          "role": "menuitemradio",
+          "name": "Floating"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/stacking.goal.ts::over%20a%20page%20widget%20at%20z-index%20101::the%20panel%20stays%20on%20top%20and%20its%20controls%20work%20in%20every%20layout",
+      "targetId": "chromium",
+      "instructionDigest": "4a622d9c07d75b738c0a706d10dfe78d8ffa81f40cf04ca844a52aeba8b2be34",
+      "paramsDigest": "d4f54c7a7e69e7ba981b598700af2e238460f91371f8304781aa0a2a9f8670f2",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Selected \"Floating\" from the layout menu. The button now reads \"Layout: Floating\", and the edge and corner resize handles are back.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "separator",
+        "name": "Resize from the left edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the right edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom edge"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the top-right corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-left corner"
+      },
+      {
+        "role": "separator",
+        "name": "Resize from the bottom-right corner"
+      },
+      {
+        "role": "button",
+        "name": "Layout: Floating"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Layout: Dock to bottom"
+      }
+    ],
+    "endWaitMs": 12769,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

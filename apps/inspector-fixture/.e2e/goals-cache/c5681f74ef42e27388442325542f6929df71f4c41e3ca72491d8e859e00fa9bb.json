@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:42:06.546Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"e8 button \\\"Add item\\\" .addItemButton\"",
+        "target": {
+          "role": "button",
+          "name": "e8 button \"Add item\" .addItemButton"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/structure.goal.ts::inline::a%20text%20field%27s%20node%20offers%20fill%2C%20and%20a%20button%27s%20does%20not",
+      "targetId": "chromium",
+      "instructionDigest": "4229078c37ed1162492a6ab1b984d605dc2f65c08507a80947ad56f614f0fc80",
+      "paramsDigest": "59d5a090c2a92b9347d496d9a68f85c51a2f164c5afd443cd684a29dc9b28157",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Tapped the Structure lens node tagged .addItemButton (e8 button \"Add item\"). It is now selected, and the Selected panel shows \"Structure node ref e8\" with ListPage.addItemButton and 3 tools (click, hover, mark_element).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "e8 button \"Add item\""
+      },
+      {
+        "text": "ref e8"
+      },
+      {
+        "text": "ListPage.addItemButton"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 3"
+      },
+      {
+        "text": "page state and 3 tool schemas"
+      },
+      {
+        "text": "locator('ayme-ref=e8')"
+      },
+      {
+        "role": "treeitem",
+        "name": "e5 textbox \"New item\""
+      },
+      {
+        "role": "treeitem",
+        "name": "e8 button \"Add item\"",
+        "states": [
+          "selected"
+        ]
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "e5 textbox \"New item\""
+      },
+      {
+        "text": "ref e5"
+      },
+      {
+        "text": "ListPage.newItemInput"
+      },
+      {
+        "text": "ListPage.newItemFields[0]"
+      },
+      {
+        "role": "heading",
+        "name": "Tools · 5"
+      },
+      {
+        "name": "type"
+      },
+      {
+        "text": "(target: string, text: string, submit?: boolean, slowly?: boolean)"
+      },
+      {
+        "text": "Type text into one editable element. Replaces its value, unless typing slowly, which types one character at a time. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page …"
+      }
+    ],
+    "endWaitMs": 16864,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:48:25.541Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "hover",
+        "summary": "hover over button \"e5 textbox \\\"New item\\\" .newItemInput\"",
+        "target": {
+          "role": "button",
+          "name": "e5 textbox \"New item\" .newItemInput"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/structure.goal.ts::external::hovering%20a%20structure%20node%20highlights%20it%20on%20the%20page%2C%20and%20selecting%20it%20keeps%20it%20highlighted",
+      "targetId": "chromium",
+      "instructionDigest": "6e50731f107a069c159ae912e5f8d4cf9cc2aceab120b0fc5f30186a8de2cbf4",
+      "paramsDigest": "12ba32785a83164844157d90778eeba4de35a79672eb2ec36a8de65503718161",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Hovered the Structure lens node \"e5 textbox \"New item\" .newItemInput\" (#n15018). The hover registered; the only screen change was the Connections button label gaining \"WebMCP unavailable\".",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "button",
+        "name": "Connections: ayme-e2e connected, WebMCP unavailable"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Connections: ayme-e2e connected"
+      }
+    ],
+    "endWaitMs": 16725,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

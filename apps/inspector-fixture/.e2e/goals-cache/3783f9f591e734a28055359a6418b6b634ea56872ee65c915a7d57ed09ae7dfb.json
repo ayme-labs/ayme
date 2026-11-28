@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:36:41.702Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"hover\"",
+        "target": {
+          "role": "button",
+          "name": "hover"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/toolsLens.goal.ts::external::connected%20to%20an%20agent::each%20tool%27s%20page%20shows%20the%20description%2C%20schema%20and%20destructive%20mark%20an%20agent%20gets",
+      "targetId": "chromium",
+      "instructionDigest": "c0ef0f80d32f22a63457535e3308a3b84235105d11e9ba43ca818eb359020511",
+      "paramsDigest": "827468bb8c40eb35b3938b222dd4f495baaa161b18bad69d99f091126d216c31",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I selected \"hover\" in the Tools lens. The detail panel now shows a \"hover\" article labelled \"Browser tool\". Its Arguments form has a single `target` field and a Run button, which I did not press. \"What the model sees\" shows the hover input schema with `target` required.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "heading",
+        "name": "hover"
+      },
+      {
+        "text": "Move the pointer over one element. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "text": "hover"
+      },
+      {
+        "role": "article",
+        "name": "hover"
+      },
+      {
+        "role": "form",
+        "name": "hover"
+      },
+      {
+        "name": "hover input schema"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "heading",
+        "name": "click"
+      },
+      {
+        "text": "Click one element. The result's changes_before lists what changed on the page since you last received it, before this action; changes lists what the action changed, anything that changed while the page settled after it included."
+      },
+      {
+        "role": "checkbox",
+        "name": "doubleClick"
+      },
+      {
+        "text": "doubleClick"
+      },
+      {
+        "text": "boolean"
+      },
+      {
+        "text": "button"
+      },
+      {
+        "text": "left | right | middle"
+      },
+      {
+        "text": "optional"
+      }
+    ],
+    "endWaitMs": 15846,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

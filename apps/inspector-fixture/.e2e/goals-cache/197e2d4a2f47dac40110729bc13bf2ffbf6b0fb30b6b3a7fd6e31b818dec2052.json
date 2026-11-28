@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:50:26.293Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"press_key\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "press_key"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::press_key%20presses%20the%20key%20the%20page%20receives",
+      "targetId": "chromium",
+      "instructionDigest": "9dc5c61d793b51ed7b77d8439715a2569ea086d16288e95d7ffe0798225560aa",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 1,
+      "agent": "default"
+    },
+    "summary": "I ran press_key with key F7 once. The Last result reads \"Succeeded · 268 ms · 1 interaction\", and the Runs timeline now has two runs, the second being press_key \"F7\" as succeeded. The \"New item\" textbox value changed from F4 to F7.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "textbox",
+        "name": "New item",
+        "value": "F7"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 2",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "F7",
+        "text": "\"F7\""
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "key help",
+        "text": "Press a key or combo. Esc to search."
+      },
+      {
+        "role": "textbox",
+        "name": "New item",
+        "value": "F4"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 16560,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-27T08:37:00.399Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "tap",
+        "summary": "tap button \"Tools\" in \"Model\"",
+        "target": {
+          "role": "button",
+          "name": "Tools",
+          "within": "Model"
+        }
+      },
+      {
+        "name": "tap",
+        "summary": "tap listitem \"goal\" in \"Agent tools · 3\"",
+        "target": {
+          "role": "listitem",
+          "name": "goal",
+          "within": "Agent tools · 3"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::goal%20runs%20from%20the%20panel%20and%20shows%20in%20Runs%20with%20the%20Runs%20its%20steps%20executed%20and%20its%20Handover%20result",
+      "targetId": "chromium",
+      "instructionDigest": "6d62ed3de9467190cc7f358fe2d0041a17119d640f55752ab0560d90d95d4d4e",
+      "paramsDigest": "7691e3080242e1bae45dddebb4a7409ba9d49b8a844c975a0b88df9ab2b5cfde",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Switched to the Tools lens and opened the goal tool. Its detail panel now shows the goal form with goal, maxSteps and values arguments and a Run button.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "values count",
+        "text": "0 / 254"
+      },
+      {
+        "role": "button",
+        "name": "Model"
+      },
+      {
+        "role": "button",
+        "name": "Tools",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "text": "10 refs"
+      },
+      {
+        "role": "heading",
+        "name": "Page object tools · 4"
+      },
+      {
+        "text": "ListPage"
+      },
+      {
+        "text": ".addItem"
+      },
+      {
+        "text": ".countItems"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "button",
+        "name": "Model",
+        "states": [
+          "pressed"
+        ]
+      },
+      {
+        "role": "button",
+        "name": "Tools"
+      },
+      {
+        "text": "0 refs"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 2",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "127.0.0.1:57022"
+      },
+      {
+        "name": "ListPage"
+      },
+      {
+        "text": "page"
+      }
+    ],
+    "endWaitMs": 13301,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

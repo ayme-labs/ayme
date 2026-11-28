@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T20:01:19.482Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "type",
+        "summary": "type \"Add item\" into searchbox \"Search page objects, actions, members a…\"",
+        "target": {
+          "role": "searchbox",
+          "name": "Search page objects, actions, members and refs",
+          "placeholder": "Search objects, actions, refs"
+        },
+        "value": "Add item"
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/inspector.goal.ts::the%20app%27s%20DOM%20gains%20no%20attribute%20while%20an%20element%20is%20highlighted",
+      "targetId": "chromium",
+      "instructionDigest": "8fe855c9cc3fe54df24016e9fbb6efe5bf5401eb157d4c881113a0c621c066a3",
+      "paramsDigest": "cce228c8419d2ee5d10eaa934fe47b2d02aab3b72a4b6654afedab84c0d6d1b2",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Typed \"Add item\" into the navigator search box. The results list now shows one match: Ref e8 button \"Add item\" (ListPage.addItemButton).",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs",
+        "value": "Add item"
+      },
+      {
+        "text": "9 refs"
+      },
+      {
+        "text": "Ref"
+      },
+      {
+        "name": "e8 button \"Add item\""
+      },
+      {
+        "text": "ListPage.addItemButton"
+      },
+      {
+        "role": "button",
+        "name": "Connections: agent connection off, WebMCP unavailable"
+      },
+      {
+        "role": "list",
+        "name": "Search results"
+      },
+      {
+        "role": "listitem",
+        "name": "Ref e8 button \"Add item\" ListPage.addItemButton"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "searchbox",
+        "name": "Search page objects, actions, members and refs",
+        "placeholder": "Search objects, actions, refs"
+      },
+      {
+        "text": "0 refs"
+      },
+      {
+        "role": "button",
+        "name": "On this page · 1",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "name": "/"
+      },
+      {
+        "text": "127.0.0.1:5203"
+      },
+      {
+        "text": "page"
+      },
+      {
+        "name": "entries"
+      },
+      {
+        "text": "ListItem[0]"
+      }
+    ],
+    "endWaitMs": 12738,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

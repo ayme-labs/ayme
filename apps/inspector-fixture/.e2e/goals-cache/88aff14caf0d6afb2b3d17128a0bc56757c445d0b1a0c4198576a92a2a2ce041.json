@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:25:44.939Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "check",
+        "summary": "check checkbox \"Urgent\" (2 of 2)",
+        "target": {
+          "role": "checkbox",
+          "name": "Urgent",
+          "position": {
+            "index": 1,
+            "of": 2
+          }
+        },
+        "checked": true
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::inline::the%20fill_form%20editor%20fills%20only%20the%20fields%20still%20changed%20after%20an%20undo",
+      "targetId": "chromium",
+      "instructionDigest": "a6bc70ac377e545fecaad1956f0e951c7bde2233671757f1feda50f5400aba81",
+      "paramsDigest": "d123b850d6833c7c31332975f3df26cf762bdd9c2fdc7db0927ea0a20a1f9663",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "Checked the Urgent checkbox in the fill_form form. It now reads Checked with fill order 2, and the changed-fields status reads \"2 changed\". I didn't press Run.",
+    "startPath": "/",
+    "endPath": "/",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "2 changed"
+      },
+      {
+        "name": "Fill order",
+        "text": "2"
+      },
+      {
+        "role": "button",
+        "name": "Undo the change to Urgent"
+      },
+      {
+        "role": "checkbox",
+        "name": "Urgent",
+        "states": [
+          "checked"
+        ]
+      },
+      {
+        "text": "locator('ayme-ref=e7')"
+      },
+      {
+        "role": "listitem",
+        "name": "Move Urgent Fill order Urgent checkbox Undo the change to Urgent Urgent Checked"
+      },
+      {
+        "text": "Checked"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "Changed fields",
+        "text": "1 changed"
+      },
+      {
+        "role": "listitem",
+        "name": "Move Urgent Urgent checkbox Urgent Unchecked"
+      },
+      {
+        "text": "Unchecked"
+      }
+    ],
+    "endWaitMs": 14077,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

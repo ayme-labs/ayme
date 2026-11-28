@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "trace-1",
+  "createdAt": "2026-11-26T21:55:52.929Z",
+  "payload": {
+    "actions": [
+      {
+        "name": "type",
+        "summary": "type \"Milk\" into textbox \"text\" in \"ListPage.addItem\"",
+        "target": {
+          "role": "textbox",
+          "name": "text",
+          "within": "ListPage.addItem"
+        },
+        "value": "Milk"
+      },
+      {
+        "name": "tap",
+        "summary": "tap button \"Run\" in \"ListPage.addItem\"",
+        "target": {
+          "role": "button",
+          "name": "Run",
+          "within": "ListPage.addItem"
+        }
+      }
+    ],
+    "executor": {
+      "name": "claude-code",
+      "version": "1"
+    },
+    "recordedFor": {
+      "testId": "tests/goals/runs.goal.ts::external%20with%20WebMCP%20publication%20off::connected%20to%20an%20agent::a%20Page%20Object%20tool%20that%20fails%20gives%20the%20text%20an%20agent%20gets%20for%20the%20same%20call",
+      "targetId": "chromium",
+      "instructionDigest": "d85c9665e00a69807f24eed549a6105133b769324ffb7612cd010ac55e5b6b7e",
+      "paramsDigest": "248f82ce92389f110d414688c0f85759470d888e61bc6872e85835ad2187f4c3",
+      "callIndex": 0,
+      "agent": "default"
+    },
+    "summary": "I typed \"Milk\" into the text field and pressed Run once. The run finished as \"Failed · 1.3 s\" with a TimeoutError: locator.click found no button named \"Add item\" on the page. The fill of newItemInput with \"Milk\" went through. The Runs list now has two entries.",
+    "startPath": "http://127.0.0.1:9403/inspector",
+    "endPath": "http://127.0.0.1:9403/inspector",
+    "endAnchors": [
+      {
+        "role": "status",
+        "name": "Last result"
+      },
+      {
+        "role": "textbox",
+        "name": "text",
+        "value": "Milk"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 2",
+        "states": [
+          "expanded"
+        ]
+      },
+      {
+        "role": "image",
+        "name": "Run by you from the Inspector"
+      }
+    ],
+    "goneAnchors": [
+      {
+        "role": "textbox",
+        "name": "text"
+      },
+      {
+        "role": "button",
+        "name": "Runs · 1",
+        "states": [
+          "expanded"
+        ]
+      }
+    ],
+    "endWaitMs": 16272,
+    "keyedBy": {
+      "cacheSchema": "trace-1",
+      "policyVersion": "conservative/6",
+      "project": "4c2e8554f14286b9c2ab01127de1621e8acb3379fd8edc98c12634eefe359a90",
+      "platform": "web",
+      "engineName": "web",
+      "engineSpiVersion": 1,
+      "appIdentity": "435bad2af97595ae68915ffbe9b6349ee5f250bdbb3d4af6b2e40418e2433956",
+      "agentContextDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

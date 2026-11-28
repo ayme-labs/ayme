@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { assertUnpatchedE2e } from "@ayme-dev/e2e-tools";
 import { claudeCode } from "@e2e-dev/acp";
 import type { E2EConfig } from "e2e";
@@ -28,14 +26,11 @@ export const GOALS_MODEL = "sonnet";
 
 // The external placement's Inspector window is served by `ayme mcp`, and a
 // recording is keyed to the window's origin: one port for every test (they
-// run one at a time) lets them replay. Derived from this checkout's path, so
-// two checkouts' runs rarely meet; above the 9350-9365 range pages scan to
-// pair (packages/mcp/testing/index.ts), so no page pairs with it unasked.
-const checkout = createHash("sha256")
-  .update(import.meta.dirname)
-  .digest()
-  .readUInt16BE(0);
-process.env.AYME_E2E_MCP_PORT ??= String(9400 + (checkout % 400));
+// run one at a time) lets them replay. Fixed, not per checkout, because the
+// recordings are committed and must replay from any checkout; above the
+// 9350-9365 range pages scan to pair (packages/mcp/testing/index.ts), so no
+// page pairs with it unasked.
+process.env.AYME_E2E_MCP_PORT ??= "9403";
 
 const [target] = base.targets;
 
