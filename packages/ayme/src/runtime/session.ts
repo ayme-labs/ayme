@@ -5,7 +5,6 @@ import type {
   PomRegistry,
 } from "../page-objects/application";
 import {
-  arrivedAfterLoad,
   constructPageObject,
   type PageObjectConstructor,
 } from "../page-objects/application";
@@ -571,7 +570,6 @@ export function createAymeOn(
                 recordTopLevelRun(name, input, by, probeAfterAction),
               readPageObjectTree: readPageObjectTreeNow,
               url: () => target.rawPage().url(),
-              arrivedAfterLoad,
             })
           ),
       },

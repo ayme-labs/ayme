@@ -58,10 +58,6 @@ import {
   type PageObjectRoot,
 } from "./pageObjectIds";
 import { readPageObjectTree as readTree } from "./pageObjectTree";
-import {
-  markArrivedAfterLoad,
-  waitForReturnedPageObject,
-} from "./presenceWait";
 import type { PageObjectTreeRead } from "../domain/pageObjectTreeText";
 import { parsePageObjectId, type PageObjectId } from "../domain/pageObjectId";
 import type { RunContext } from "../../runs/application";
@@ -914,8 +910,6 @@ async function performPageObjectAction(
   const value = await returned;
   if (loaded && value !== undefined && isJsonValue(value))
     result.result = value;
-  const present = await waitForReturnedPageObject(value);
-  if (present && loaded) markArrivedAfterLoad(result);
   return result;
 }
 

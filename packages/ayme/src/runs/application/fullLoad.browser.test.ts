@@ -17,9 +17,17 @@ const REDIRECT = new URL("/__redirect", location.href).href;
 const loadingNote = (url: string) =>
   `The page is loading ${url}. Call snapshot next to read the new page.`;
 
+/** How long `Leaver.leaveAndLinger` goes on after it starts the load. */
+const LINGER_MS = 1200;
+
 class Leaver {
   leave() {
     location.assign("/__no-content");
+  }
+  async leaveAndLinger() {
+    location.assign("/__no-content");
+    await new Promise((resolve) => setTimeout(resolve, LINGER_MS));
+    return "left";
   }
 }
 registerCompiledPom(Leaver, {
@@ -30,6 +38,12 @@ registerCompiledPom(Leaver, {
       methodName: "leave",
       toolName: "Leaver.leave",
       description: "Leave the page.",
+      parameters: [],
+    },
+    {
+      methodName: "leaveAndLinger",
+      toolName: "Leaver.leaveAndLinger",
+      description: "Leave the page and go on a while.",
       parameters: [],
     },
   ],
@@ -119,6 +133,16 @@ describe("a tool call that starts a full page load, in Chromium", () => {
       loading: NO_CONTENT,
       next: loadingNote(NO_CONTENT),
     });
+  });
+
+  it("answers at the load's start, before its action returns, as the browser runtime ends with its document", async () => {
+    const started = Date.now();
+
+    const result = await ayme.tools.run("Leaver.leaveAndLinger", {});
+
+    expect(result).toMatchObject({ settled: false, loading: NO_CONTENT });
+    expect(result).not.toHaveProperty("result");
+    expect(Date.now() - started).toBeLessThan(LINGER_MS);
   });
 
   it("answers before a Run queued behind it takes its turn", async () => {

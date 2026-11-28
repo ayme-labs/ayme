@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PageObjectId, PageObjectTreeRead } from "../page-objects/domain";
 import { treeRead } from "../../testing/pageObjectTree.testSupport";
 import { InPageVersionError } from "../in-page";
-import type { DocumentToken, ToolInfo } from "../shared";
+import type { ToolInfo } from "../shared";
 import {
   pageObjectToolSource,
   type PageObjectToolSession,
@@ -48,12 +48,6 @@ const list = (...names: string[]): PageObjectTreeRead =>
     ]
   );
 
-/** `read` as read from the document `document`. */
-const inDocument = (
-  read: PageObjectTreeRead,
-  document: string
-): PageObjectTreeRead => ({ ...read, document: document as DocumentToken });
-
 /**
  * A session whose page shows `trees` one after the other, a read at a
  * time, at `urls` one after the other, and whose runs answer `answer`.
@@ -62,15 +56,11 @@ function session({
   trees = [list("Milk")],
   urls = ["http://app/list"],
   answer,
-  arrived = () => false,
   toolsBeforeRead = TOOLS,
 }: {
   trees?: PageObjectTreeRead[];
   urls?: string[];
   answer: () => Promise<unknown>;
-  /** Whether the Page Object a run returned is present after the full
-   * load it started. */
-  arrived?: (result: unknown) => boolean;
   /** The tools the session lists until a read of the tree probed the
    * page. */
   toolsBeforeRead?: readonly ToolInfo[];
@@ -89,7 +79,6 @@ function session({
         run,
         readPageObjectTree,
         url: () => urls[Math.min(at++, urls.length - 1)]!,
-        arrivedAfterLoad: arrived,
       }),
   };
   return { stub, run, readPageObjectTree };
@@ -126,7 +115,6 @@ function countingPage() {
           run: add,
           readPageObjectTree: async () => tree(),
           url: () => "http://app/list",
-          arrivedAfterLoad: () => false,
         })
       ),
   };
@@ -185,57 +173,6 @@ describe("a Page Object Tool's answer to an agent", () => {
       url: "http://app/item/1",
     });
     expect(readPageObjectTree).toHaveBeenCalledOnce();
-  });
-
-  it("after a full load its Host outlives, once the Page Object the action returned is present, answers from the new page: its URL and how the Page Object Tree changed", async () => {
-    const loaded = {
-      settled: false,
-      page_changed: false,
-      loading: "http://app/item/1",
-      next: "The page is loading http://app/item/1. Call snapshot next to read the new page.",
-    };
-    const { stub } = session({
-      trees: [
-        inDocument(list("Milk"), "old"),
-        inDocument(list("Milk", "Eggs"), "new"),
-      ],
-      urls: ["http://app/list", "http://app/item/1"],
-      answer: async () => loaded,
-      arrived: (result) => result === loaded,
-    });
-
-    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
-      settled: false,
-      url: "http://app/item/1",
-      changes: [
-        "ListPage",
-        "  items:",
-        "    + Item po2",
-        "        name: text: Eggs",
-      ].join("\n"),
-    });
-  });
-
-  it("after a full load, answers without the tree while the read still finds the old document, though the Page Object the action returned is present", async () => {
-    const loaded = {
-      settled: false,
-      page_changed: false,
-      loading: "http://app/item/1",
-    };
-    const { stub } = session({
-      trees: [
-        inDocument(list("Milk"), "old"),
-        inDocument(list("Milk", "Eggs"), "old"),
-      ],
-      urls: ["http://app/list", "http://app/list"],
-      answer: async () => loaded,
-      arrived: (result) => result === loaded,
-    });
-
-    expect(await pageObjectToolSource(stub).run("ListPage.add", {})).toEqual({
-      settled: false,
-      url: "http://app/item/1",
-    });
   });
 
   it("carries the change in the Page Object Tree, a Page Object that appeared in full with its children and id", async () => {
@@ -397,7 +334,6 @@ describe("a Page Object Tool's answer to a Caller that runs Page Object Tools al
           run,
           readPageObjectTree: () => Promise.reject(versions),
           url: () => "http://app/list",
-          arrivedAfterLoad: () => false,
         }),
     };
 

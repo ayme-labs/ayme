@@ -31,12 +31,6 @@ export type PageObjectToolTurn = {
   /** The Page Object Tree now, and the capture of the page it was read from. */
   readPageObjectTree(): Promise<PageObjectTreeRead>;
   url(): string;
-  /**
-   * Whether the Page Object the Run that answered `result` returned is
-   * present in the document a full load the Run started brought: only a
-   * Host that outlives a full load waits for it.
-   */
-  arrivedAfterLoad(result: unknown): boolean;
 };
 
 export type PageObjectToolAnswer = {
@@ -151,31 +145,25 @@ function withoutChangeRecord(error: unknown): unknown {
 
 async function answerOf(
   session: PageObjectToolTurn,
-  actionResult: ActionResult,
+  { settled, result, loading }: ActionResult,
   before: PageObjectTreeRead | undefined,
   url: string
 ): Promise<PageObjectToolAnswer> {
-  const { settled, result, loading } = actionResult;
   const answer: PageObjectToolAnswer = {
     settled,
     ...(result === undefined ? {} : { result }),
   };
-  const read = () => session.readPageObjectTree().catch(() => undefined);
-  let after: PageObjectTreeRead | undefined;
-  // A full load ends this document, and the page has not settled until the
-  // new one has loaded. Its tree is read again only from the new document,
-  // once the Page Object the action returned is present there: a presence
-  // predicate that also holds on the old page can pass before the load
-  // commits, so only a read of another document counts.
-  if (loading !== undefined) {
-    answer.settled = false;
-    if (session.arrivedAfterLoad(actionResult)) after = await read();
-    if (!after || !before || after.document === before.document)
-      return { ...answer, ...(loading === url ? {} : { url: loading }) };
-  }
+  // A full load ends this document: its tree is not read again, and the
+  // page has not settled until the new one has loaded.
+  if (loading !== undefined)
+    return {
+      ...answer,
+      settled: false,
+      ...(loading === url ? {} : { url: loading }),
+    };
   const now = session.url();
   if (now !== url) answer.url = now;
-  after ??= await read();
+  const after = await session.readPageObjectTree().catch(() => undefined);
   const changes = before && after && renderPageObjectTreeChanges(before, after);
   if (changes) answer.changes = changes;
   return answer;
