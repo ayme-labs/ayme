@@ -2,10 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { isHeldByPage, isInputNote } from "./pageValues";
 
-// A page can call the recorder's page functions itself, with anything: what
-// it hands over is taken only in the shape the recorder's own in-page code
-// sends.
-
 const click = {
   kind: "click",
   seq: 1,
@@ -29,6 +25,9 @@ const key = {
 describe("what a page tells of an input it held", () => {
   it("is taken as the gate sends it: a click, with or without its button, or a key", () => {
     expect(isHeldByPage(click)).toBe(true);
+    // A click from the keyboard counts 0, and a pointer can be between
+    // pixels.
+    expect(isHeldByPage({ ...click, detail: 0, x: 10.5, y: -2 })).toBe(true);
     expect(isHeldByPage({ ...click, button: "right" })).toBe(true);
     expect(isHeldByPage(key)).toBe(true);
   });
@@ -40,6 +39,17 @@ describe("what a page tells of an input it held", () => {
     ["a key with nothing but its kind", { kind: "key" }],
     ["another kind of input", { ...click, kind: "drag" }],
     ["a click with no number", { ...click, seq: "1" }],
+    ["a click numbered NaN", { ...click, seq: NaN }],
+    ["a click numbered 0, which the gate never gives", { ...click, seq: 0 }],
+    ["a click with a negative number", { ...click, seq: -1 }],
+    ["a click with a fractional number", { ...click, seq: 1.5 }],
+    ["a click numbered past the safe integers", { ...click, seq: 2 ** 60 }],
+    ["a click at NaN", { ...click, x: NaN }],
+    ["a click at Infinity", { ...click, y: Infinity }],
+    ["a click of a negative count", { ...click, detail: -1 }],
+    ["a click of a fractional count", { ...click, detail: 0.5 }],
+    ["a click of count Infinity", { ...click, detail: Infinity }],
+    ["a key numbered NaN", { ...key, seq: NaN }],
     ["a click with no place", { ...click, x: undefined }],
     ["a click of another button", { ...click, button: "left" }],
     ["a click with no list of modifiers", { ...click, modifiers: null }],
@@ -78,6 +88,10 @@ describe("what a page tells of an input's target", () => {
     ["a note with no type", { ...note, type: undefined }],
     ["a note with no element under the pointer", { ...note, under: undefined }],
     ["a held click with no number", { ...note, held: { document: "doc_1" } }],
+    [
+      "a held click numbered NaN",
+      { ...note, held: { document: "doc_1", seq: NaN } },
+    ],
     ["a held click that is a string", { ...note, held: "doc_1" }],
   ])("is not taken when the page hands over %s", (_, value) => {
     expect(isInputNote(value)).toBe(false);

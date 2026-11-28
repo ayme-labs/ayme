@@ -445,7 +445,6 @@ async function openPage(
     heldBinding,
     ({ page, frame }, input: unknown) => {
       const pageId = idOf.get(page);
-      // Any script of the page can call it: only what the gate sends counts.
       if (!pageId || !isHeldByPage(input)) return;
       const id = `input_${++inputs}` as InputId;
       held.set(id, { frame, input });
@@ -480,7 +479,6 @@ async function openPage(
   const chains = new Map<Page, TargetChain[]>();
   const chainBinding = "__aymeRecorderTarget";
   await context.exposeBinding(chainBinding, ({ page }, seen: unknown) => {
-    // Any script of the page can call it: only what the watch sends counts.
     if (!isInputNote(seen)) return;
     chains.set(page, [...(chains.get(page) ?? []).slice(-9), seen]);
   });
