@@ -7964,3 +7964,115 @@ describe("the lifecycle, for a middle click", () => {
     expect(steps(todo)).toEqual([{ type: "check", button: undefined }]);
   });
 });
+
+// Issue #1525: a read a held input waits on runs out of its time. The page's
+// last read is a start only while nothing reached the page or was reported
+// on it since; otherwise the input starts at a lost read (rule 12).
+describe("the lifecycle, for a read that runs out of its time", () => {
+  const typingHeld = (input: InputId): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "typing" },
+  });
+  const typedIn = (report: InteractionReport): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report,
+  });
+  const fillReport: InteractionReport = {
+    type: "fill",
+    selector: "internal:role=textbox",
+    target: null,
+    values: { text: "a" },
+  };
+
+  it("starts a click at a lost read, not at the read before typing reported on its page, and ends the typing there (rule 12)", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      ...oneClick,
+      reported,
+      typedIn(fillReport),
+      settled(reported1),
+      clickHeld(input2),
+      failed(takeSnapshot(snapshot4)),
+    ]);
+
+    expect(todo.at(-3)).toEqual([readAfter(snapshot3)]);
+    expect(todo.at(-2)).toEqual([takeSnapshot(snapshot4)]);
+    expect(todo.at(-1)).toContainEqual(passOn(input2));
+    const last = writes(
+      run([
+        opened,
+        ...started,
+        ...oneClick,
+        reported,
+        typedIn(fillReport),
+        settled(reported1),
+        clickHeld(input2),
+        failed(takeSnapshot(snapshot4)),
+        passedOn(input2, 22),
+        settled(input2),
+        taken(snapshot6),
+        reported,
+        finish,
+      ])
+    ).flat();
+    // The typing ends where the click starts: a read neither has.
+    expect(last).toContainEqual(lostRead(snapshot5, 22));
+    expect(last).toContainEqual({
+      kind: "timeline",
+      add: {
+        kind: "interaction",
+        interaction: {
+          page: page1,
+          report: fillReport,
+          before: snapshot2,
+          after: snapshot5,
+          at: 10,
+          beforeFromReport: true,
+        },
+      },
+    });
+    expect(last).toContainEqual(interaction(snapshot5, snapshot6, 22));
+  });
+
+  it("starts a click at a lost read when the click before it reached the page after the page's last read", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      clickHeld(input1),
+      taken(snapshot1),
+      passedOn(input1),
+      settled(input1),
+      reported,
+      failed(readAfter(snapshot2)),
+      clickHeld(input2),
+      failed(takeSnapshot(snapshot3)),
+      passedOn(input2, 22),
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      lostRead(snapshot4, 22),
+      waitForSettled(input2),
+    ]);
+  });
+
+  it("gives typing whose first key's read runs out a lost start: the fill starts there, not at a read after its first key (rule F7)", () => {
+    const todo = writes(
+      run([
+        opened,
+        ...started,
+        typingHeld(input1),
+        failed(takeSnapshot(snapshot1)),
+        passedOn(input1),
+        typedIn(fillReport),
+      ])
+    );
+
+    expect(todo.at(-3)).toEqual([passOn(input1)]);
+    expect(todo.at(-2)).toEqual([lostRead(snapshot2), letThrough(input1)]);
+    expect(todo.at(-1)).toEqual([waitForSettled(reported1)]);
+  });
+});

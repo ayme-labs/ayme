@@ -478,6 +478,10 @@ type PageGate = {
   readonly upTo: InputId | null;
   /** The latest snapshot of the page. */
   readonly latest: { readonly id: SnapshotId; readonly at: number } | null;
+  /** An input reached the page, or was reported on it, since its latest
+   * snapshot: that snapshot shows the page as it was before the input, and
+   * is no start for a held input whose own read could not be had. */
+  readonly moved?: boolean;
   /** The page's next snapshot is its first since a pause: it is where
    * recording resumes, the new point to compare from. */
   readonly resumes?: boolean;
@@ -1424,6 +1428,11 @@ function changeGate(draft: Draft, page: PageId, patch: Partial<PageGate>) {
 const gateOf = (draft: Draft, page: PageId) =>
   draft.gates.find((gate) => gate.page === page);
 
+/** An input reached the page, or was reported on it. */
+function moved(draft: Draft, page: PageId) {
+  if (gateOf(draft, page)) changeGate(draft, page, { moved: true });
+}
+
 function change(draft: Draft, id: InputId, patch: Partial<Input>) {
   draft.inputs = draft.inputs.map((input) =>
     input.id === id ? { ...input, ...patch } : input
@@ -1663,7 +1672,9 @@ function keepRead(
     (page) => page.id === snapshot.page && !sameDocument(page.url, snapshot.url)
   );
   changeGate(draft, snapshot.page, {
-    ...(stale ? {} : { latest: { id: snapshot.id, at: snapshot.at } }),
+    ...(stale
+      ? {}
+      : { latest: { id: snapshot.id, at: snapshot.at }, moved: false }),
     ...(resumes ? { resumes: false } : {}),
   });
 }
@@ -1743,8 +1754,10 @@ function inputPassedOn(state: Active, draft: Draft, id: InputId, at: number) {
   // It starts at the read it could not have, as the page stood when it
   // reached it: the timeline holds its place in the page's Visit, before
   // the read after it is asked.
+  // A lost read is the page's latest, as one the timeline could not keep:
+  // typing that follows starts there.
   const page = state.pages.find((open) => open.id === input.page);
-  if (input.beforeLost && input.before && page)
+  if (input.beforeLost && input.before && page) {
     draft.todo.push({
       kind: "timeline",
       add: {
@@ -1752,6 +1765,9 @@ function inputPassedOn(state: Active, draft: Draft, id: InputId, at: number) {
         snapshot: { id: input.before, page: page.id, url: page.url, at },
       },
     });
+    changeGate(draft, input.page, { latest: { id: input.before, at } });
+  }
+  moved(draft, input.page);
   // Typing has no "after": what it changed is the typing's report's. In a
   // wrap-up it stays under way until its page is settled, which gives its
   // report time to arrive, since nothing guarantees that the report comes
@@ -1810,6 +1826,7 @@ function interactionRevised(
   page: PageId,
   report: InteractionReport
 ) {
+  moved(draft, page);
   const open = draft.inputs.findLast(
     (input) =>
       input.page === page && input.held.kind === "reported" && !input.elsewhere
@@ -2070,6 +2087,7 @@ function knownFromReport(
   page: PageId,
   report: InteractionReport
 ) {
+  moved(draft, page);
   let place = draft.inputs.findIndex(
     (input) =>
       input.page === page &&
@@ -2683,20 +2701,36 @@ function withoutItsSnapshot(draft: Draft, owner: Input) {
   if (heldByItsPage(owner)) {
     // It is the page's: it is passed on, and goes its way like any other,
     // so that the inputs behind it keep their order. A click or a press
-    // starts from the page's last read, which the page's next document
-    // forgets (`leftDocument`); with none, from a read the timeline is told
-    // was lost, and is recorded with no element and no changes. Typing
-    // needs no "before": what it changed is its report's.
-    const latest = gateOf(draft, owner.page)?.latest;
-    change(draft, owner.id, {
-      stage: "passingOn",
-      asked: null,
-      ...(owner.held.kind === "typing"
-        ? {}
-        : latest
+    // starts from the page's last read while that shows the page as it
+    // stands, as the page's next document forgets it (`leftDocument`) and
+    // an input since makes it older than the page (`moved`); otherwise from
+    // a read the timeline is told was lost, and is recorded with no element
+    // and no changes. Typing needs no "before" of its own once its page has
+    // one to start from; without one, the lost read is the start of what
+    // it types.
+    const gate = gateOf(draft, owner.page);
+    const latest = gate?.latest;
+    const start =
+      owner.held.kind === "typing"
+        ? latest
+          ? {}
+          : { before: nextSnapshotId(draft), beforeLost: true }
+        : latest && !gate.moved
           ? { before: latest.id, beforeEarlier: true }
-          : { before: nextSnapshotId(draft), beforeLost: true }),
-    });
+          : { before: nextSnapshotId(draft), beforeLost: true };
+    change(draft, owner.id, { stage: "passingOn", asked: null, ...start });
+    // A read under way for what came before it on the page would show the
+    // page after this input too: what came before ends where it starts.
+    if (start.before)
+      for (const open of draft.inputs.filter(
+        (input) => input.page === owner.page && input.stage === "takingAfter"
+      ))
+        change(draft, open.id, {
+          stage: "settled",
+          after: start.before,
+          asked: null,
+          ...startAt(open, start.before, null),
+        });
     draft.todo.push({
       kind: "browser",
       ask: { kind: "passOn", input: owner.id },
