@@ -71,8 +71,8 @@ it("a request sent while the Session starts waits for the start to succeed", asy
 
   expect(await answer).toEqual({
     ok: true,
-    text: "Tab: about:blank\nThis screen has no Page Object Tools.",
-    data: { tab: { url: "about:blank", title: "" }, tools: [] },
+    text: "Tab t1: about:blank\nThis screen has no Page Object Tools.",
+    data: { tab: { id: "t1", url: "about:blank", title: "" }, tools: [] },
   });
 });
 
@@ -182,13 +182,13 @@ it("page-objects answers the Page Object Tree, after a line naming the Tab and b
   expect(await session.ask({ pageObjects: {} })).toEqual({
     ok: true,
     text: [
-      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Tab t1: Groceries (http://127.0.0.1:5173/basket.html)",
       "Basket po1",
       "  heading: heading [level=1]: Groceries",
       "This screen has 2 Page Object Tools: ayme -s=default tools lists them with their parameters.",
     ].join("\n"),
     data: {
-      tab,
+      tab: { id: "t1", ...tab },
       pageObjectTree: "Basket po1\n  heading: heading [level=1]: Groceries",
       tools: 2,
     },
@@ -206,13 +206,13 @@ it("tools lists every Page Object Tool of the Tab with its parameters, an unavai
   expect(await session.ask({ tools: {} })).toEqual({
     ok: true,
     text: [
-      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Tab t1: Groceries (http://127.0.0.1:5173/basket.html)",
       "Basket.readHeading: Read the basket's heading.",
       '  parameters: {"type":"object","properties":{},"additionalProperties":false}',
       "Basket.clear (unavailable: The basket is empty): Clear the basket.",
       '  parameters: {"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}',
     ].join("\n"),
-    data: { tab, tools: [readHeading, clear] },
+    data: { tab: { id: "t1", ...tab }, tools: [readHeading, clear] },
   });
 });
 
@@ -235,7 +235,7 @@ it("tools marks a tool its author marked destructive, in the text after its name
   expect(await session.ask({ tools: {} })).toEqual({
     ok: true,
     text: [
-      "Tab: Groceries (http://127.0.0.1:5173/basket.html)",
+      "Tab t1: Groceries (http://127.0.0.1:5173/basket.html)",
       "Basket.readHeading: Read the basket's heading.",
       '  parameters: {"type":"object","properties":{},"additionalProperties":false}',
       "Basket.remove destructive: Remove an item.",
@@ -243,7 +243,7 @@ it("tools marks a tool its author marked destructive, in the text after its name
       "Basket.empty destructive (unavailable): Remove an item.",
       "  parameters: {}",
     ].join("\n"),
-    data: { tab, tools: [readHeading, remove, empty] },
+    data: { tab: { id: "t1", ...tab }, tools: [readHeading, remove, empty] },
   });
 });
 
@@ -256,10 +256,10 @@ it("a screen without Page Object Tools says so in both listings, and page-object
   });
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
-    text: "Tab: http://127.0.0.1:5173/plain.html\nNo Page Object is on the page.\nThis screen has 0 Page Object Tools: ayme -s=default tools lists them with their parameters.",
+    text: "Tab t1: http://127.0.0.1:5173/plain.html\nNo Page Object is on the page.\nThis screen has 0 Page Object Tools: ayme -s=default tools lists them with their parameters.",
   });
   expect(await session.ask({ tools: {} })).toMatchObject({
-    text: "Tab: http://127.0.0.1:5173/plain.html\nThis screen has no Page Object Tools.",
+    text: "Tab t1: http://127.0.0.1:5173/plain.html\nThis screen has no Page Object Tools.",
   });
 });
 
@@ -636,7 +636,7 @@ it("every command a Session's answers tell to run names the Session, so that it 
     })
   ).toMatchObject({
     text: expect.stringContaining(
-      " as the first line of ayme -s=work page-objects prints it."
+      " as the first line of ayme -s=work page-objects prints them."
     ),
   });
 });
@@ -661,13 +661,13 @@ it("a listing reads the most recently active Tab, and follows the browser automa
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     text: expect.stringMatching(
-      /^Tab: Sign in \(http:\/\/127\.0\.0\.1:5173\/sign-in\.html\)\nSignInPage\n/
+      /^Tab t1: Sign in \(http:\/\/127\.0\.0\.1:5173\/sign-in\.html\)\nSignInPage\n/
     ),
   });
 
   browser.activate();
   expect(await session.ask({ tools: {} })).toMatchObject({
-    text: expect.stringMatching(/^Tab: Shop \(/),
+    text: expect.stringMatching(/^Tab t2: Shop \(/),
   });
 });
 
@@ -678,14 +678,17 @@ it("--tab names another Tab by the URL its page shows, as the listing's first li
 
   expect(
     await session.ask({ pageObjects: { tab: shop.tab.url } })
-  ).toMatchObject({ ok: true, text: expect.stringMatching(/^Tab: Shop \(/) });
+  ).toMatchObject({
+    ok: true,
+    text: expect.stringMatching(/^Tab t2: Shop \(/),
+  });
   expect(await session.ask({ tools: { tab: shop.tab.url } })).toMatchObject({
     ok: true,
-    text: expect.stringMatching(/^Tab: Shop \(/),
+    text: expect.stringMatching(/^Tab t2: Shop \(/),
   });
   // Naming a Tab does not make it the most recently active one.
   expect(await session.ask({ tools: {} })).toMatchObject({
-    text: expect.stringMatching(/^Tab: Sign in \(/),
+    text: expect.stringMatching(/^Tab t1: Sign in \(/),
   });
 });
 
@@ -698,7 +701,7 @@ it("--tab naming a URL no Tab shows is answered with the URLs the open Tabs show
     await session.ask({ pageObjects: { tab: "http://127.0.0.1:5173/" } })
   ).toEqual({
     ok: false,
-    text: "No tab of the Session's browser shows http://127.0.0.1:5173/. --tab takes the URL a tab shows, as the first line of ayme -s=default page-objects prints it. The open tabs show: http://127.0.0.1:5173/sign-in.html, http://127.0.0.1:5173/shop.html.",
+    text: "No tab of the Session's browser shows http://127.0.0.1:5173/. --tab takes a tab's id or the URL it shows, as the first line of ayme -s=default page-objects prints them. The open tabs show: http://127.0.0.1:5173/sign-in.html, http://127.0.0.1:5173/shop.html.",
   });
 });
 
@@ -708,13 +711,13 @@ it("when the Tab closes, the Session works on the next most recently active one"
   const other = browser.openTab();
   other.show(signIn);
   expect(await session.ask({ tools: {} })).toMatchObject({
-    text: expect.stringMatching(/^Tab: Sign in \(/),
+    text: expect.stringMatching(/^Tab t1: Sign in \(/),
   });
 
   other.close();
 
   expect(await session.ask({ tools: {} })).toMatchObject({
-    text: expect.stringMatching(/^Tab: Shop \(/),
+    text: expect.stringMatching(/^Tab t2: Shop \(/),
   });
 });
 
@@ -815,7 +818,7 @@ it("a call whose --tab names another Tab than its Page Object Id's is refused, a
     await session.ask({ call: { ...add("po1").call, tab: signIn.tab.url } })
   ).toEqual({
     ok: false,
-    text: "po1 is a Page Object of the tab that shows http://127.0.0.1:5173/shop.html, not of the one that shows http://127.0.0.1:5173/sign-in.html. Leave out --tab: the Page Object Id chooses the tab.",
+    text: "po1 is a Page Object of tab t1, which shows http://127.0.0.1:5173/shop.html, not of the tab --tab names. Leave out --tab: the Page Object Id chooses the tab.",
   });
   expect(
     await session.ask({ call: { ...add("po1").call, tab: shop.tab.url } })
@@ -839,7 +842,7 @@ it("a read of the tab list made before a Tab opened lets go of none of it: the T
 
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     ok: true,
-    text: expect.stringMatching(/^Tab: Sign in \(/),
+    text: expect.stringMatching(/^Tab t1: Sign in \(/),
   });
   browser.activate();
   expect(await session.ask(add("po1"))).toMatchObject({ ok: true });
@@ -867,7 +870,7 @@ it("a command waiting on a Tab that closes is answered that the tab was closed, 
   expect(await listing).toEqual(closed);
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     ok: true,
-    text: expect.stringMatching(/^Tab: Shop \(/),
+    text: expect.stringMatching(/^Tab t2: Shop \(/),
   });
 });
 
@@ -915,15 +918,144 @@ it("a call whose Page Object Id names its Tab reads no tab list", async () => {
   expect(browser.runs).toEqual([add("po1").call, add("po1").call]);
 });
 
-it("the last line of a listing asked for with --tab names that Tab too, quoted for a shell", async () => {
+it("the last line of a listing asked for with --tab names that Tab by its id, however --tab named it", async () => {
   const { session, browser } = await startScriptedSession(opening);
-  const odd = "http://127.0.0.1:5173/shop.html?q=it's&x=1";
-  browser.show({ ...shop, tab: { ...shop.tab, url: odd } });
-  browser.openTab().show(signIn);
-
-  expect(await session.ask({ pageObjects: { tab: odd } })).toMatchObject({
-    text: expect.stringMatching(
-      /\nThis screen has 0 Page Object Tools: ayme -s=default tools --tab='http:\/\/127\.0\.0\.1:5173\/shop\.html\?q=it'\\''s&x=1' lists them with their parameters\.$/
-    ),
+  browser.show({
+    ...shop,
+    tab: { ...shop.tab, url: "http://127.0.0.1:5173/shop.html?q=it's&x=1" },
   });
+  browser.openTab().show(signIn);
+  const lastLine =
+    /\nThis screen has 0 Page Object Tools: ayme -s=default tools --tab=t2 lists them with their parameters\.$/;
+
+  expect(
+    await session.ask({
+      pageObjects: { tab: "http://127.0.0.1:5173/shop.html?q=it's&x=1" },
+    })
+  ).toMatchObject({ text: expect.stringMatching(lastLine) });
+  expect(await session.ask({ pageObjects: { tab: "t2" } })).toMatchObject({
+    text: expect.stringMatching(lastLine),
+  });
+});
+
+it("each Tab has an id of the Session's own, kept across page loads, which no other Tab is given once it closes", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  expect(await session.ask({ tools: {} })).toMatchObject({
+    text: expect.stringMatching(/^Tab t1: Shop \(/),
+  });
+
+  browser.show(signIn);
+  expect(await session.ask({ tools: {} })).toMatchObject({
+    text: expect.stringMatching(/^Tab t1: Sign in \(/),
+  });
+
+  const second = browser.openTab();
+  second.show(shop);
+  expect(await session.ask({ tools: {} })).toEqual({
+    ok: true,
+    text: "Tab t2: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
+    data: { tab: { id: "t2", ...shop.tab }, tools: [] },
+  });
+
+  second.close();
+  browser.openTab().show(shop);
+  expect(await session.ask({ tools: {} })).toMatchObject({
+    text: expect.stringMatching(/^Tab t3: Shop \(/),
+  });
+});
+
+it("--tab names a Tab exactly by its id, also among Tabs that show the same URL", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.openTab().show(shop);
+  await session.ask({ tools: {} });
+
+  expect(await session.ask({ tools: { tab: "t2" } })).toEqual({
+    ok: true,
+    text: "Tab t2: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
+    data: { tab: { id: "t2", ...shop.tab }, tools: [] },
+  });
+  await session.ask({
+    call: { tool: "ShopPage.readHeading", input: {}, tab: "t2" },
+  });
+  expect(browser.runs).toEqual([{ tool: "ShopPage.readHeading", input: {} }]);
+});
+
+it("--tab naming the id of a Tab that closed, or of none the Session gave, is answered with why and what to do", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  const other = browser.openTab();
+  await session.ask({ tools: {} });
+  other.close();
+  const toDo =
+    "Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.";
+
+  expect(await session.ask({ tools: { tab: "t1" } })).toEqual({
+    ok: false,
+    text: `No open tab of the Session's browser has the id t1 now: the tab was closed, or it shows the Inspector. ${toDo}`,
+  });
+  expect(
+    await session.ask({
+      call: { tool: "ShopPage.readHeading", input: {}, tab: "t3" },
+    })
+  ).toEqual({
+    ok: false,
+    text: `This Session gave no tab the id t3. ${toDo}`,
+  });
+  expect(browser.runs).toEqual([]);
+});
+
+it("--tab naming a URL several Tabs show works on the most recently active of them, and its answer names the others' ids", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  browser.openTab().show(signIn);
+  const front = browser.openTab();
+  front.show(shop);
+  const several =
+    "Tabs t1 and t3 show http://127.0.0.1:5173/shop.html: ayme chose t1, the most recently active. Name another by its id, as --tab=t3. To see which tab has which id, bring it to the front with your browser automation and run ayme -s=default page-objects: its first line shows its id.";
+
+  expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
+    ok: true,
+    text: `Tab t1: Shop (http://127.0.0.1:5173/shop.html)\n${several}\nThis screen has no Page Object Tools.`,
+    data: { tab: { id: "t1", ...shop.tab }, tools: [] },
+  });
+  expect(
+    await session.ask({
+      call: { tool: "ShopPage.readHeading", input: {}, tab: shop.tab.url },
+    })
+  ).toEqual({
+    ok: true,
+    text: `${several}\nsettled: true`,
+    data: { settled: true },
+  });
+  expect(front.runs).toEqual([{ tool: "ShopPage.readHeading", input: {} }]);
+  expect(await session.ask({ tools: { tab: signIn.tab.url } })).toMatchObject({
+    text: "Tab t2: Sign in (http://127.0.0.1:5173/sign-in.html)\nThis screen has no Page Object Tools.",
+  });
+});
+
+it("a call whose --tab names its Page Object Id's Tab by id runs there, one that names another Tab by id is refused, and one that names an id no Tab has is told so", async () => {
+  const { session, browser } = await startScriptedSession(opening);
+  browser.show(shop);
+  await session.ask({ pageObjects: {} });
+  browser.give("po1", "Basket");
+  browser.openTab().show(shop);
+  await session.ask({ pageObjects: {} });
+
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: "t2" } })
+  ).toEqual({
+    ok: false,
+    text: "po1 is a Page Object of tab t1, which shows http://127.0.0.1:5173/shop.html, not of the tab --tab names. Leave out --tab: the Page Object Id chooses the tab.",
+  });
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: "t9" } })
+  ).toEqual({
+    ok: false,
+    text: "This Session gave no tab the id t9. Bring the tab you want to the front with your browser automation and run ayme -s=default page-objects: it works on that tab, and its first line shows the tab's id.",
+  });
+  expect(
+    await session.ask({ call: { ...add("po1").call, tab: "t1" } })
+  ).toMatchObject({ ok: true });
+  expect(browser.runs).toEqual([add("po1").call]);
 });

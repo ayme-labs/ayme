@@ -191,20 +191,24 @@ it("a failed build swaps nothing in, and listings say so after their Tab line un
 
   expect(await session.ask({ tools: {} })).toEqual({
     ok: true,
-    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\n${BUILD_LINE}\nThis screen has no Page Object Tools.`,
-    data: { tab: shop.tab, tools: [], buildFailing: BUILD_LINE },
+    text: `Tab t1: Shop (http://127.0.0.1:5173/shop.html)\n${BUILD_LINE}\nThis screen has no Page Object Tools.`,
+    data: {
+      tab: { id: "t1", ...shop.tab },
+      tools: [],
+      buildFailing: BUILD_LINE,
+    },
   });
   expect(await session.ask({ pageObjects: {} })).toMatchObject({
     ok: true,
-    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\n${BUILD_LINE}\nShopPage\nThis screen has 0 Page Object Tools: ayme -s=default tools lists them with their parameters.`,
+    text: `Tab t1: Shop (http://127.0.0.1:5173/shop.html)\n${BUILD_LINE}\nShopPage\nThis screen has 0 Page Object Tools: ayme -s=default tools lists them with their parameters.`,
   });
   expect(browser.swappedIn).toEqual([]);
 
   await rebuilt(browser, EDITED);
   expect(await session.ask({ tools: {} })).toEqual({
     ok: true,
-    text: "Tab: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
-    data: { tab: shop.tab, tools: [] },
+    text: "Tab t1: Shop (http://127.0.0.1:5173/shop.html)\nThis screen has no Page Object Tools.",
+    data: { tab: { id: "t1", ...shop.tab }, tools: [] },
   });
   expect(browser.swappedIn).toEqual([EDITED]);
 });
@@ -238,7 +242,7 @@ it("a listing while a dialog is open keeps the build line after its Tab line", a
 
   expect(await session.ask({ tools: {} })).toEqual({
     ok: false,
-    text: `Tab: http://127.0.0.1:5173/shop.html\n${BUILD_LINE}\nA confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run this command again.`,
+    text: `Tab t1: http://127.0.0.1:5173/shop.html\n${BUILD_LINE}\nA confirm dialog is open on the tab: "Remove Milk from the basket?". Answer it with your browser automation, then run this command again.`,
   });
 });
 
@@ -402,9 +406,9 @@ it("a build a Tab cannot register counts there as a failed build: the Tab keeps 
 
   expect(await session.ask({ tools: { tab: shop.tab.url } })).toEqual({
     ok: true,
-    text: `Tab: Shop (http://127.0.0.1:5173/shop.html)\nPage Object rebuild failed on this Tab. Keeping its current Page Objects. ${NO_BASKET}\nThis screen has no Page Object Tools.`,
+    text: `Tab t1: Shop (http://127.0.0.1:5173/shop.html)\nPage Object rebuild failed on this Tab. Keeping its current Page Objects. ${NO_BASKET}\nThis screen has no Page Object Tools.`,
     data: {
-      tab: shop.tab,
+      tab: { id: "t1", ...shop.tab },
       tools: [],
       buildFailing: `Page Object rebuild failed on this Tab. Keeping its current Page Objects. ${NO_BASKET}`,
     },

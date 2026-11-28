@@ -85,7 +85,7 @@ test("ayme attach starts a Session on the automation's browser, and ayme detach 
     stderr: "",
   });
   expect((await ayme("page-objects")).stdout).toMatch(
-    new RegExp(`^Tab: Shop \\(${baseURL}/shop\\.html\\)\\nShopPage\\n`)
+    new RegExp(`^Tab t1: Shop \\(${baseURL}/shop\\.html\\)\\nShopPage\\n`)
   );
   const background = sessionProcess()!;
 

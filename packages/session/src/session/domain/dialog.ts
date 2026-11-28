@@ -16,10 +16,11 @@ export type Dialog = {
  */
 export type TabDialog = "none" | "opening" | { readonly open: Dialog };
 
-/** Why the Session started no work on the Tab at `url`: `dialog` counts as
- * open there. */
+/** Why the Session started no work on the Tab `id` at `url`: `dialog`
+ * counts as open there. */
 export class TabDialogOpen extends TabReadError {
   constructor(
+    readonly id: string,
     readonly url: string,
     readonly dialog: Dialog
   ) {

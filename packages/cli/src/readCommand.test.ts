@@ -510,6 +510,12 @@ describe("readCommand for a Session", () => {
     });
   });
 
+  it("hands the Session an id --tab gives, as it hands it a URL", () => {
+    expect(readCommand(["tools", "--tab=t2"])).toMatchObject({
+      request: { tools: { tab: "t2" } },
+    });
+  });
+
   it("names the Tab for ayme tools and ayme call with --tab", () => {
     expect(readCommand(["tools", "--tab=about:blank"])).toMatchObject({
       request: { tools: { tab: "about:blank" } },
@@ -537,9 +543,10 @@ describe("readCommand for a Session", () => {
   );
 
   it("lists --tab in its usage text", () => {
-    expect(USAGE).toContain("ayme page-objects [--tab=<url>]");
-    expect(USAGE).toContain("ayme tools [--tab=<url>]");
-    expect(USAGE).toContain("--tab=<url>");
+    expect(USAGE).toContain("ayme page-objects [--tab=<id> | --tab=<url>]");
+    expect(USAGE).toContain("ayme tools [--tab=<id> | --tab=<url>]");
+    expect(USAGE).toContain("  --tab=<id> ");
+    expect(USAGE).toContain("  --tab=<url> ");
   });
 
   it("lists call with its --params in its usage text", () => {
