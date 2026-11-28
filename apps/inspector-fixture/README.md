@@ -92,6 +92,10 @@ suite's Page Objects as tools: `pnpm test:goals:tools`, with its model-free
 runs and what keeps the arms apart in
 [`@ayme-dev/e2e-tools`](../../packages/e2e-tools/README.md).
 
+The study's baselines, each arm's numbers before the Inspector's redesign,
+and the one command per arm that measures them are in
+[`study/baseline/`](study/baseline/README.md).
+
 Known costs of keeping the goal files to their twins' shape:
 
 - A long test costs more in the agent arms: each tool's page (toolsLens)
