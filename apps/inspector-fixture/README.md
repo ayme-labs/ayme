@@ -77,8 +77,8 @@ this machine's own login. What may differ from the twin is
 and why moving the pointer is no goal is
 [`movePointerTo`](tests/e2e/fixtures.ts)'s. They never run in CI, for the
 reason beside the `CI` guard in `e2e.goals.config.ts`. Every test
-starts after the panel's first look at the page, and in the external
-placement with the panel's tab in front, so no goal starts with a switch to
+starts after what the panel shows on its own once the page opens, and in
+the external placement with the panel's tab in front, so no goal starts with a switch to
 it: e2e measures a goal's outcome from the screen the goal starts on, as
 [`settledStart`](tests/e2e/fixtures.ts) says. A goal that follows a read of
 the page gets the panel's tab back from
