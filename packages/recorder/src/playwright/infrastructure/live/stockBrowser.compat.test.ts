@@ -2417,6 +2417,66 @@ it("lets a click the browser gave to another element than the one under the poin
   expect(await clicks()).toEqual(["other", "porto", "picker", "faro"]);
 });
 
+/** A page with a button, and a frame whose select opens its list on the
+ * press, under the pointer. */
+const PICKER_IN_FRAME = `
+    <button>Top</button>
+    <iframe id="picker" title="Picker" style="width:300px;height:160px"></iframe>
+    <template id="picker-page">
+      <div role="group" aria-label="City picker">
+        <button id="city" style="display:block;width:200px;height:40px">Lisbon</button>
+        <ul id="cities" hidden style="position:absolute;margin:0;padding:0;list-style:none;width:200px;background:#fff">
+          <li style="height:40px">Porto</li>
+        </ul>
+      </div>
+      <script>
+        const city = document.getElementById("city");
+        const cities = document.getElementById("cities");
+        city.addEventListener("mousedown", () => {
+          const { left, top } = city.getBoundingClientRect();
+          cities.style.left = left + "px";
+          cities.style.top = top + "px";
+          cities.hidden = false;
+        });
+      </script>
+    </template>
+    <script>
+      document.getElementById("picker").srcdoc =
+        document.getElementById("picker-page").innerHTML;
+    </script>`;
+
+// Each document holds its own inputs: one that reached a frame untouched
+// can reach it ahead of a click the page still holds, and Playwright then
+// reports it first. The adapter names the click its report is of.
+it("names the click a report is of when one that reached a frame untouched overtakes a click the page still holds", async () => {
+  const browser = await onStockPlaywright(PICKER_IN_FRAME);
+  const frame = browser.page.frameLocator("#picker");
+  const city = frame.getByRole("button", { name: "Lisbon" });
+  await city.waitFor();
+  await reporting(browser);
+  await browser.ask({ kind: "holdInputs", on: true });
+  await browser.toldOf("inputsHeld");
+
+  await browser.click(browser.page.getByRole("button", { name: "Top" }));
+  const top = await browser.toldOf("inputHeld");
+  await browser.click(city);
+  const untouched = await browser.toldOf(
+    "inputHeld",
+    ({ held }) => held?.kind === "click" && held.reachedAt !== undefined
+  );
+  const first = await browser.toldOf("interactionReported");
+  expect(first.of).toBe(untouched.input);
+  expect(namedLine(first.report)).toContain('group "City picker"');
+
+  await browser.ask({ kind: "passOn", input: top.input });
+  const second = await browser.toldOf(
+    "interactionReported",
+    (signal) => signal !== first
+  );
+  expect(second.of).toBeUndefined();
+  expect(second.report.selector).toContain("Top");
+});
+
 it("holds as a press exactly the keys Playwright reports as a press: a letter typed in a field is typing; Enter, an arrow key, Control with a letter and Tab are presses", async () => {
   const browser = await onStockPlaywright(
     `<label>Item <input id="item" /></label>`

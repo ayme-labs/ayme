@@ -79,6 +79,11 @@ export type BrowserSignal =
       readonly kind: "interactionReported";
       readonly page: PageId;
       readonly report: InteractionReport;
+      /** The click that reached its page untouched the report is of, as the
+       * adapter matched it. Reports come in the order inputs reached the
+       * page, and such a click in another document of the page, as a frame,
+       * can reach it ahead of an input held before it. */
+      readonly of?: InputId;
     }
   /** Playwright revised the Interaction it reported last on the page, as it
    * does with each key typed into the same field. */
@@ -1400,6 +1405,11 @@ function change(draft: Draft, id: InputId, patch: Partial<Input>) {
 const reachedAt = (input: Input) =>
   input.held.kind === "click" ? (input.held.reachedAt ?? null) : null;
 
+/** Whether an input has not reached its page yet: its page holds it back. */
+const heldBack = (input: Input) =>
+  (input.stage === "waiting" || input.stage === "takingBefore") &&
+  reachedAt(input) === null;
+
 /** An input the pages held may reach its page now, from `before` when it
  * has one. A click that reached it untouched is there already. */
 function passOn(draft: Draft, input: Input, before?: SnapshotId) {
@@ -1507,7 +1517,7 @@ function heard(state: Active, draft: Draft, happening: BrowserSignal): Active {
       );
       return state;
     case "interactionReported":
-      interactionReported(state, draft, happening.page, happening.report);
+      interactionReported(state, draft, happening);
       return state;
     // Stryker disable next-line ConditionalExpression: every signal that comes here has its case above; the default is for the type
     default:
@@ -1797,14 +1807,13 @@ function interactionRevised(
 function interactionReported(
   state: Active,
   draft: Draft,
-  page: PageId,
-  report: InteractionReport
+  { page, report, of }: Extract<BrowserSignal, { kind: "interactionReported" }>
 ) {
   // A revision from now on is of this report, not of a fill before it.
   changeGate(draft, page, { reported: true, lastFill: null });
   if (report.type === ASSERTED) return asserted(draft, page, report);
   const kind = heldKindOf(report);
-  if (kind !== null) return reportOfHeld(state, draft, page, report, kind);
+  if (kind !== null) return reportOfHeld(state, draft, page, report, kind, of);
   if (REPORTED_ONLY.has(report.type)) knownFromReport(draft, page, report);
 }
 
@@ -1838,19 +1847,23 @@ function reportOfHeld(
   draft: Draft,
   page: PageId,
   reported: InteractionReport,
-  kind: HeldInput["kind"]
+  kind: HeldInput["kind"],
+  of: InputId | undefined
 ) {
   // Reports come in the order of the inputs: this one belongs to the oldest
   // input of its page and its kind that has none, if that input is on its
   // way. A click's is a click of its button: a middle click's report is
-  // never a left click's, and a check is no right click's.
+  // never a left click's, and a check is no right click's. One the adapter
+  // names is of that click (`of`).
   const input = draft.inputs.find(
     (held) =>
       held.page === page &&
-      held.held.kind === kind &&
       held.report === null &&
       held.joins === null &&
-      (kind !== "click" || reportsClickOf(held, reported))
+      (of
+        ? held.id === of
+        : held.held.kind === kind &&
+          (kind !== "click" || reportsClickOf(held, reported)))
   );
   if (!input) {
     // A click or a key made while the recorder wraps up, once the pages no
@@ -1867,8 +1880,7 @@ function reportOfHeld(
   }
   // An input its page still holds back cannot be reported yet. A click
   // that reached its page untouched can, whatever it waits for.
-  const heldBack = input.stage === "waiting" || input.stage === "takingBefore";
-  if (heldBack && reachedAt(input) === null) return;
+  if (heldBack(input)) return;
   // A key pressed with nothing focused has no target, whatever element
   // Playwright names for it.
   // Stryker disable next-line ConditionalExpression: only a press says that nothing was focused; the check is for the type
@@ -1881,7 +1893,8 @@ function reportOfHeld(
   giveUpEarlier(
     draft,
     input.page,
-    draft.inputs.findIndex((held) => held.id === input.id)
+    draft.inputs.findIndex((held) => held.id === input.id),
+    input.passedOnAt
   );
 }
 
@@ -2010,8 +2023,9 @@ function endReported(draft: Draft, index: number) {
 }
 
 /** An input known from Playwright's report only. It happened before every
- * input its page still holds back, and after everything reported before
- * it. */
+ * input its page still holds back, and before a click that reached the
+ * page untouched whose report has not come: Playwright reports in order.
+ * And after everything reported before it. */
 function knownFromReport(
   draft: Draft,
   page: PageId,
@@ -2023,7 +2037,9 @@ function knownFromReport(
       // What was reported before it came first: an assertion, and an input
       // known from its report that still waits for its start.
       heldByItsPage(input) &&
-      (input.stage === "waiting" || input.stage === "takingBefore")
+      (input.stage === "waiting" ||
+        input.stage === "takingBefore" ||
+        (reachedAt(input) !== null && input.report === null))
   );
   if (place < 0) place = draft.inputs.length;
   giveUpEarlier(draft, page, place);
@@ -2040,13 +2056,30 @@ function knownFromReport(
   ];
 }
 
-/** Playwright reports in order: the inputs of a page held before the
- * `index`th that have no report yet will get none. */
-function giveUpEarlier(draft: Draft, page: PageId, index: number) {
+/** Playwright reports in the order inputs reached the page: the inputs of
+ * a page held before the `index`th that have no report yet will get none,
+ * but for one that has not reached the page yet, or reached it after the
+ * reported one, which reached it at `reached`. Such an input is in another
+ * document than a click that reached the page untouched. */
+function giveUpEarlier(
+  draft: Draft,
+  page: PageId,
+  index: number,
+  reached: number | null = null
+) {
   for (const earlier of draft.inputs.slice(0, index))
     // A click another one's report covers has none either: it goes with
     // the click that covers it, whatever is said of it here.
-    if (earlier.page === page && earlier.report === null)
+    if (
+      earlier.page === page &&
+      earlier.report === null &&
+      !heldBack(earlier) &&
+      !(
+        reached !== null &&
+        earlier.passedOnAt !== null &&
+        earlier.passedOnAt > reached
+      )
+    )
       change(draft, earlier.id, { unreported: true });
 }
 
