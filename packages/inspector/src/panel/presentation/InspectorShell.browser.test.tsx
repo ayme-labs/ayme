@@ -249,6 +249,17 @@ describe("motion", () => {
     'button[aria-label="Open ayme"]'
   );
 
+  /** The element's opacity and scale as they show now. */
+  function look(element: typeof aside) {
+    return element.evaluate((target) => {
+      const { opacity, scale } = getComputedStyle(target);
+      return { opacity: Number(opacity), scale };
+    });
+  }
+
+  /** How the panel or the logo looks once it has grown all the way in. */
+  const whole = { opacity: 1, scale: "none" };
+
   /** The panel's glides, as their axis and the time each is at. */
   function glides() {
     return inspector.panel.evaluate((panel) =>
@@ -769,6 +780,63 @@ describe("motion", () => {
     expect(await inspector.panel.count()).toBe(0);
     expect(await aside.count()).toBe(1);
     await expect.poll(() => aside.count()).toBe(0);
+  });
+
+  it("shows the logo whole once the panel has shrunk into it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+
+    await inspector.collapse();
+
+    await expect.poll(() => aside.count()).toBe(0);
+    await expect.poll(() => look(logoButton.locator(".."))).toEqual(whole);
+  });
+
+  it("opens out of the logo where it was, at its own size, once it has shrunk into it", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+    await inspector.collapse();
+    await expect.poll(() => aside.count()).toBe(0);
+
+    await logo.open();
+
+    await expect.poll(() => look(inspector.panel)).toEqual(whole);
+    await expect.poll(() => logoButton.count()).toBe(0);
+    expect(await shell.box()).toEqual(floating);
+  });
+
+  // On its way into the logo, the panel is out of the accessibility tree, so
+  // the page object finds only the logo. Only the panel's shrinking slows:
+  // the page object's click waits for the growing logo to hold still.
+  it("is opened by the page object while still on its way into the logo", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating });
+    await inspector.collapse();
+    await expect
+      .poll(() =>
+        aside.evaluate((panel) => {
+          const shrinking = panel.getAnimations();
+          for (const animation of shrinking) animation.playbackRate = 0.1;
+          return shrinking.length;
+        })
+      )
+      .toBeGreaterThan(0);
+
+    await inspector.open();
+
+    await expect.poll(() => look(inspector.panel)).toEqual(whole);
+  });
+
+  it("settles into the dock it's dropped on, at the dock's size", async () => {
+    await emulateMotion("no-preference");
+    renderShell({ layout: "float", float: floating, sideWidth: 600 });
+
+    await header.dropAt(4, 300);
+
+    await expect
+      .poll(() => shell.box())
+      .toEqual({ x: 0, y: 0, width: 600, height: 800 });
+    await expect.poll(() => glides()).toEqual([]);
   });
 
   it("turns the same panel back when the logo is opened before the panel has gone", async () => {

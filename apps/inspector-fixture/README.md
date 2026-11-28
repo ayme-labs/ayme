@@ -45,7 +45,7 @@ opens the fixture page with `?external` (its session has
 and drives the Inspector in a second window, the one `ayme_inspect` names.
 `page` is still the app's page there, so highlights and picking are checked
 across the window boundary. The specs about the panel in the page (its
-layout, host CSS, stacking, mounting, motion and dogfooding) run inline only.
+layout, host CSS, stacking, mounting and dogfooding) run inline only.
 
 ## Running
 

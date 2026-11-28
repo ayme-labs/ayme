@@ -564,6 +564,96 @@ describe("the Inspector", () => {
       .toBe("Succeeded");
   });
 
+  // From the default place, moved and resized, then each dock resized from
+  // its default size: 640 wide at the side, 360 high at the bottom.
+  it("comes back to its layout and its sizes after a reload", async () => {
+    renderApp();
+    const { header, shell } = inspector;
+    const start = await shell.box();
+    await header.dragBy(-100, 50);
+    await expect
+      .poll(() => shell.box())
+      .toEqual({ ...start, x: start.x - 100, y: start.y + 50 });
+    await shell.resizeBy("left", -60, 0);
+    const floating = {
+      x: start.x - 160,
+      y: start.y + 50,
+      width: start.width + 60,
+      height: start.height,
+    };
+    await expect.poll(() => shell.box()).toEqual(floating);
+    await header.layoutMenu.choose("Dock left");
+    await shell.resizeBy("right", 80, 0);
+    const dockedLeft = { x: 0, y: 0, width: 720, height: 800 };
+    await expect.poll(() => shell.box()).toEqual(dockedLeft);
+    await header.layoutMenu.choose("Dock to bottom");
+    await shell.resizeBy("top", 0, -60);
+    const dockedBottom = { x: 0, y: 380, width: 1280, height: 420 };
+    await expect.poll(() => shell.box()).toEqual(dockedBottom);
+
+    for (const unmount of unmounts.splice(0)) unmount();
+    renderApp();
+
+    await expect.poll(() => header.layoutMenu.current()).toBe("Dock to bottom");
+    expect(await shell.box()).toEqual(dockedBottom);
+    await header.layoutMenu.choose("Dock left");
+    await expect.poll(() => shell.box()).toEqual(dockedLeft);
+    await header.layoutMenu.choose("Floating");
+    await expect.poll(() => shell.box()).toEqual(floating);
+  });
+
+  it("comes back collapsed after a reload", async () => {
+    renderApp();
+    await inspector.collapse();
+    await expect.poll(() => inspector.panel.count()).toBe(0);
+
+    for (const unmount of unmounts.splice(0)) unmount();
+    renderApp();
+
+    await expect.poll(() => inspector.logo.root.isVisible()).toBe(true);
+    expect(await inspector.panel.count()).toBe(0);
+  });
+
+  it("keeps the Model lens's panes as they were left after a reload", async () => {
+    const tool = saveTool("editor");
+    mockRegistry([editor("editor", tool)], [tool]);
+    renderApp();
+    const { navigator } = inspector;
+    await navigator.showLens("Model");
+    await navigator.model.togglePane("Page object models");
+    await expect.poll(() => navigator.model.modelList.count()).toBe(0);
+
+    for (const unmount of unmounts.splice(0)) unmount();
+    renderApp();
+
+    await expect.poll(() => navigator.model.objectTree.isVisible()).toBe(true);
+    expect(await navigator.model.modelList.count()).toBe(0);
+  });
+
+  it("follows the system's colour scheme as it changes", async () => {
+    // Playwright's own emulation, which this replaces, sets both: light and
+    // reduced motion (vitest.config.ts).
+    const emulate = (colorScheme: "light" | "dark") =>
+      cdp().send("Emulation.setEmulatedMedia", {
+        features: [
+          { name: "prefers-color-scheme", value: colorScheme },
+          { name: "prefers-reduced-motion", value: "reduce" },
+        ],
+      });
+    const colorScheme = () =>
+      inspector.panel.evaluate((panel) => getComputedStyle(panel).colorScheme);
+    renderApp();
+
+    try {
+      await emulate("light");
+      await expect.poll(colorScheme).toBe("light");
+      await emulate("dark");
+      await expect.poll(colorScheme).toBe("dark");
+    } finally {
+      await emulate("light");
+    }
+  });
+
   it("names the connected agent in the header, as the runtime reports it", async () => {
     renderApp();
     await expect
@@ -612,6 +702,45 @@ describe("the Inspector", () => {
     await expect
       .poll(() => inspector.container.getAttribute("class"))
       .toMatch(/\bdark\b/);
+  });
+});
+
+describe("opening out of the logo", () => {
+  // The component tests run with reduced motion (vitest.config.ts); this
+  // turns it off, so the panel grows out of the logo.
+  function emulateMotion(value: "no-preference" | "reduce") {
+    return cdp().send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value }],
+    });
+  }
+
+  afterEach(() => emulateMotion("reduce"));
+
+  // The body measures its regions as laid out, not as scaled while the
+  // panel grows in, so their ranges stay the same once it has.
+  it("keeps the regions' ranges once the panel has grown out of the logo", async () => {
+    await emulateMotion("no-preference");
+    renderApp();
+    const divider = inspector.panel.getByRole("separator", {
+      name: "Resize the navigator",
+    });
+    const range = await divider.getAttribute("aria-valuemax");
+    expect(range).not.toBeNull();
+    // Leaving, the panel is out of the accessibility tree; this finds it.
+    const aside = inspector.container.locator("aside");
+    await inspector.collapse();
+    await expect.poll(() => aside.count()).toBe(0);
+
+    await inspector.logo.open();
+
+    await expect
+      .poll(() =>
+        inspector.panel.evaluate((panel) => panel.getAnimations().length)
+      )
+      .toBe(0);
+    // Let a late resize report land, if one were coming.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(await divider.getAttribute("aria-valuemax")).toBe(range);
   });
 });
 

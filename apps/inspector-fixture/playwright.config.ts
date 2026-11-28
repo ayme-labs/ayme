@@ -38,7 +38,7 @@ export default defineConfig<{ placement: Placement }>({
     ...devices["Desktop Chrome"],
     baseURL,
     // The panel's reduced motion only fades, so a box read after a change is
-    // where it ends. tests/motion.spec.ts runs with full motion.
+    // where it ends. The component tests cover full motion.
     reducedMotion: "reduce",
   },
   projects: [
