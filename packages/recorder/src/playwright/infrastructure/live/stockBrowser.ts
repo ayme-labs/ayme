@@ -38,7 +38,7 @@ import {
   type SnapshotId,
 } from "../../../timeline/domain";
 import {
-  askRecorderState,
+  askRecorderStateIfHeard,
   closeGate,
   fileNamesIn,
   frameContentOffset,
@@ -70,7 +70,6 @@ import {
 import {
   ancestorRefs,
   followPickingIn,
-  heard,
   highlightIn,
   installGate,
   installTargetWatch,
@@ -1003,16 +1002,15 @@ async function openPage(
    * state (a private part of Playwright, as `noLongerRecording` says): the
    * answer comes after the document's earlier reports were taken. A document
    * whose calls do not reach Playwright has no report on its way, and would
-   * never answer: it is not asked. A call Playwright traces: never inside a
-   * snapshot's mark.
+   * never answer: it is not asked (`askRecorderStateIfHeard`). A call
+   * Playwright traces: never inside a snapshot's mark.
    */
   async function everyReportDelivered() {
     const asked = markers.then(() =>
       Promise.all(
-        everyFrame().map(async (frame) => {
-          if (await frame.evaluate(heard, undefined).catch(() => false))
-            await frame.evaluate(askRecorderState).catch(() => {});
-        })
+        everyFrame().map((frame) =>
+          frame.evaluate(askRecorderStateIfHeard).catch(() => {})
+        )
       )
     );
     markers = asked.catch(() => {});

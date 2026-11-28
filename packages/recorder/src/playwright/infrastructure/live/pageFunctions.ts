@@ -7,7 +7,7 @@ import {
   type PickingStart,
 } from "../in-page/drawing";
 import { pickWithGate } from "../in-page/calls";
-import { gateIn, heardIn } from "../in-page/gate";
+import { gateIn } from "../in-page/gate";
 import {
   actedOn,
   ancestorRefsIn,
@@ -61,12 +61,6 @@ export const installGate: (held: string) => void = withRules(
     reachesPlaywright,
   },
   [leftAlone, typingKey, sameJson]
-);
-
-export const heard: (arg: undefined) => boolean = withRules(
-  heardIn,
-  { reachesPlaywright },
-  [sameJson]
 );
 
 const ancestorRules = { ancestorChain, elementAbove, ariaRefOf };

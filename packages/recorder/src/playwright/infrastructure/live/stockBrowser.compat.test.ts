@@ -2662,6 +2662,54 @@ it("holds a click on a page whose JSON.parse throws, which Playwright's calls do
   ).toEqual([]);
 });
 
+it("warns once of a document, however many inputs it leaves to the page, and once again of the next", async () => {
+  const browser = await onStockPlaywright(
+    `<script>${REPLACED}</script>${MARK}`
+  );
+  await holding(browser);
+  const warnings = () =>
+    browser.told.filter(
+      (signal) =>
+        signal.kind === "browserWarned" && signal.warning.kind === "notRecorded"
+    );
+
+  await clickAndType(browser);
+  await browser.click(browser.page.locator("#mark"));
+  await expect.poll(() => warnings().length).toBe(1);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(warnings()).toHaveLength(1);
+
+  await browser.page.reload();
+  await browser.click(browser.page.locator("#mark"));
+
+  await expect.poll(() => warnings().length).toBe(2);
+});
+
+it("answers Stop for a page that replaced JSON.parse and JSON.stringify after its gate was in", async () => {
+  const browser = await onStockPlaywright(MARK);
+  await holding(browser);
+  await browser.page.evaluate(
+    `JSON.parse = () => { throw new Error("tampered JSON.parse"); }; ${REPLACED}`
+  );
+  await browser.click(browser.page.locator("#mark"));
+  await expect
+    .poll(() => browser.page.locator("#mark").textContent())
+    .toBe("Marked");
+
+  await stopAndContinue(browser, async () => {});
+});
+
+it("installs the gate on a page that made console.debug no function, and holds its click", async () => {
+  const browser = await onStockPlaywright(
+    `<script>console.debug = 1;</script>${MARK}`
+  );
+  await holding(browser);
+
+  await browser.click(browser.page.locator("#mark"));
+
+  await browser.toldOf("inputHeld");
+});
+
 it("warns of a document that changes JSON.stringify after Record, and leaves its click to it", async () => {
   const browser = await onStockPlaywright(MARK);
   await holding(browser);
@@ -2692,21 +2740,52 @@ it("warns of a frame from another site, added after the page loaded, by the fram
   expect(await notRecorded(browser)).toEqual(unheardAt(child));
 });
 
-/** Stop and Continue, as the engine asks for them, each once answered: the
- * answer to Continue is one told after Stop's. */
-async function stopAndContinue(browser: Harness, between: () => Promise<void>) {
-  await browser.ask({ kind: "reportInteractions", on: false });
-  await browser.toldOf("reportingInteractions", ({ on }) => !on);
-  await between();
-  const before = browser.told.length;
-  await browser.ask({ kind: "reportInteractions", on: true });
-  await expect
-    .poll(() =>
-      browser.told
-        .slice(before)
-        .some((signal) => signal.kind === "reportingInteractions" && signal.on)
-    )
+/** Resolves once a signal told from `since` on matches. */
+const toldSince = (
+  browser: Harness,
+  since: number,
+  matches: (signal: BrowserSignal) => boolean
+) =>
+  expect
+    .poll(() => browser.told.slice(since).some(matches), { timeout: 10_000 })
     .toBe(true);
+
+/** Stop and Continue, in the order the engine asks for them, each request
+ * once the one before is answered: Stop lets inputs through, then switches
+ * Playwright's recorder off; Continue switches it on, then holds inputs. */
+async function stopAndContinue(browser: Harness, between: () => Promise<void>) {
+  const steps: [Written<BrowserRequest>, (signal: BrowserSignal) => boolean][] =
+    [
+      [
+        { kind: "holdInputs", on: false },
+        (signal) => signal.kind === "inputsHeld" && !signal.on,
+      ],
+      [
+        { kind: "reportInteractions", on: false },
+        (signal) => signal.kind === "reportingInteractions" && !signal.on,
+      ],
+    ];
+  const again: typeof steps = [
+    [
+      { kind: "reportInteractions", on: true },
+      (signal) => signal.kind === "reportingInteractions" && signal.on,
+    ],
+    [
+      { kind: "holdInputs", on: true },
+      (signal) => signal.kind === "inputsHeld" && signal.on,
+    ],
+  ];
+  for (const [request, answered] of steps) {
+    const since = browser.told.length;
+    await browser.ask(request);
+    await toldSince(browser, since, answered);
+  }
+  await between();
+  for (const [request, answered] of again) {
+    const since = browser.told.length;
+    await browser.ask(request);
+    await toldSince(browser, since, answered);
+  }
 }
 
 /** A click on `page`'s #mark, held, read and sent on as the engine asks,

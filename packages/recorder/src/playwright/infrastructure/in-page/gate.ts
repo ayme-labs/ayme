@@ -48,6 +48,9 @@ export type Gate = {
   /** The held click an event is, as it reached the page once sent on; null
    * for an event that is no held click's. */
   heldClickOf(event: Event): HeldClick | null;
+  /** Whether a call from the document reaches Playwright now, as the gate
+   * decides it before holding an input. */
+  heard(): boolean;
   /** Leaves every input alone while Playwright's recorder picks an element,
    * or no longer: the picking click is Playwright's, and never reaches the
    * page. It stops by itself after the picking click. */
@@ -80,15 +83,6 @@ export function startGate(start: GateStart): void {
   window.__aymeRecorderGate?.set(start.on);
 }
 
-/** Whether a call from the document reaches Playwright now, for the
- * adapter. */
-export function heardIn(
-  _: undefined,
-  rules: Pick<GateRules, "reachesPlaywright">
-): boolean {
-  return rules.reachesPlaywright((value) => JSON.stringify(value), JSON.parse);
-}
-
 /**
  * Installs the gate in a document, switched on or off as `startGate` last
  * said, and off when it never did. Switched on, it holds back the click
@@ -115,9 +109,16 @@ export function gateIn(held: string, rules: GateRules): void {
   if (window.__aymeRecorderGate) return;
   // Taken before the document's own scripts run, where the gate starts with
   // the document; one loaded before the recorder attached may have replaced
-  // it, which `reachesPlaywright` allows for.
-  const parse = JSON.parse;
-  const note = console.debug.bind(console);
+  // them, which `reachesPlaywright` allows for. Without a usable
+  // console.debug the gate installs all the same, and gives no warning.
+  let parse: (text: string) => unknown = () => null;
+  let note: (...said: string[]) => void = () => {};
+  try {
+    parse = JSON.parse;
+    note = console.debug.bind(console);
+  } catch {
+    // Nothing to say it with.
+  }
   let on = rules.gateStartsOn(window.__aymeRecorderGateStart);
   let holding = on;
   // Names this document: a held input is sent on to no other.
@@ -209,6 +210,7 @@ export function gateIn(held: string, rules: GateRules): void {
     pick: (on) => {
       picking = on;
     },
+    heard: () => heard(),
     heldClickOf: (event) => {
       const seq = arrivals.get(event);
       return seq === undefined ? null : { document: thisDocument, seq };

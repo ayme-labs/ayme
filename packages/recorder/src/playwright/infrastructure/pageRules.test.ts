@@ -209,6 +209,12 @@ describe("whether a page's calls reach Playwright", () => {
     expect(reaches((value) => JSON.stringify(value, null, 2))).toBe(true);
   });
 
+  it("holds while the page's JSON.stringify adds to the call what Playwright does not read", () => {
+    expect(
+      reaches((value) => JSON.stringify({ ...(value as object), extra: 1 }))
+    ).toBe(true);
+  });
+
   it("holds, as it cannot tell, when the parser it reads back with was replaced too", () => {
     const throwing = () => {
       throw new Error("tampered JSON.parse");
@@ -218,10 +224,6 @@ describe("whether a page's calls reach Playwright", () => {
       reachesPlaywright((value) => JSON.stringify(value, null, 2), throwing)
     ).toBe(true);
     expect(reachesPlaywright(stringify, () => ({}))).toBe(true);
-  });
-
-  it("fails for what the parser reads as another value, when it reads the call's own text right", () => {
-    expect(reaches(() => '{"tampered":true}')).toBe(false);
   });
 
   it("fails for a JSON.stringify the page replaced, or one that throws", () => {

@@ -162,7 +162,7 @@ export function clickHeld(click: {
  * Prototype.js 1.6 gives arrays a `toJSON`, sends a call Node cannot read:
  * it is lost, and so is every report of Playwright's recorder. The probe is
  * shaped as Playwright writes a call, and read back as a value, so text laid
- * out another way still reads the same.
+ * out another way, or with more in it, still reads the same.
  */
 export function reachesPlaywright(
   stringify: (value: unknown) => string,
@@ -190,7 +190,11 @@ export function reachesPlaywright(
   }
   const readsBack = (text: string) => {
     try {
-      return sameJson(parse(text), call);
+      const read = parse(text) as Record<string, unknown> | null;
+      // The fields Playwright reads of a call.
+      return (["name", "seq", "serializedArgs"] as const).every((field) =>
+        sameJson(read?.[field], call[field])
+      );
     } catch {
       return false;
     }
