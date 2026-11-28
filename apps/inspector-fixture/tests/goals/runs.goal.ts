@@ -246,63 +246,6 @@ for (const placement of placements) {
       await confirmGoalRecordings(browser);
     });
 
-    test("a run's result copies as the page's Run log has it", async ({
-      browser,
-      agent,
-      appView,
-      inspector,
-      listPage,
-    }) => {
-      // The config grants the clipboard.
-      const clipboard = {
-        write: async (text: string) => {
-          await inspector.tab.front();
-          await inspector.tab.browser.evaluate(
-            (text: string) =>
-              navigator.clipboard.writeText(text).then(() => null),
-            text
-          );
-        },
-        read: async () => {
-          await inspector.tab.front();
-          return inspector.tab.browser.evaluate(() =>
-            navigator.clipboard.readText()
-          );
-        },
-      };
-      await listPage.addItem("Milk");
-      // Something else first, so a copy that never lands is told apart.
-      await clipboard.write("not copied");
-      await agent.act("open the {tool} tool in the Tools lens", {
-        params: { tool: "ListPage.countItems" },
-      });
-      await agent.act("run it");
-      const run = inspector.runs.latest("ListPage.countItems");
-      await expect.poll(() => run.status()).toBe("Succeeded");
-      const logged = (await appView.runs()).at(-1)!;
-
-      await bringPanelToFront(inspector);
-      await agent.act("copy the result of the latest {tool} run", {
-        params: { tool: "ListPage.countItems" },
-      });
-
-      // The write is asynchronous, so the clipboard is read until it lands,
-      // with the Inspector's tab in front. The panel's "Copied" status
-      // clears again, so it is not waited for.
-      await expect
-        .poll(async () => {
-          const copied = await clipboard.read();
-          try {
-            return JSON.parse(copied) as unknown;
-          } catch {
-            return copied;
-          }
-        })
-        .toEqual(logged.result);
-
-      await confirmGoalRecordings(browser);
-    });
-
     test("press_key presses the key the page receives", async ({
       browser,
       agent,

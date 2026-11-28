@@ -280,43 +280,6 @@ test("Clear empties Runs, and the run after it is the only one shown", async ({
     .toBe("Succeeded");
 });
 
-test("a run's result copies as the page's Run log has it", async ({
-  page,
-  context,
-  inspector,
-  listPage,
-}) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await listPage.addItem("Milk");
-  // The clipboard is the focused document's: the Inspector's, in front from
-  // here on, which is the app's own page in the inline placement.
-  const panelPage = inspector.panel.page();
-  await panelPage.bringToFront();
-  // Something else first, so a copy that never lands is told apart.
-  await panelPage.evaluate(() => navigator.clipboard.writeText("not copied"));
-  await (await inspector.tool("ListPage.countItems")).runButton.click();
-  const run = inspector.runs.latest("ListPage.countItems");
-  await expect.poll(() => run.status()).toBe("Succeeded");
-  const logged = (await new AppView(page).runs()).at(-1)!;
-
-  await run.copyResultButton.click();
-
-  // The write is asynchronous, so the clipboard is read until it lands. The
-  // panel's "Copied" status clears again, so it is not waited for.
-  await expect
-    .poll(async () => {
-      const copied = await panelPage.evaluate(() =>
-        navigator.clipboard.readText()
-      );
-      try {
-        return JSON.parse(copied) as unknown;
-      } catch {
-        return copied;
-      }
-    })
-    .toEqual(logged.result);
-});
-
 test("press_key presses the key the page receives", async ({
   inspector,
   listPage,

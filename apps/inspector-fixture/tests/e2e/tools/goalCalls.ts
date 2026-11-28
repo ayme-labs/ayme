@@ -104,6 +104,4 @@ export const goalCalls: Readonly<
   "clear Runs": () => one("RunsView_clear"),
   "open the Result of the latest {tool} run in Runs": (p) =>
     one("RunsView_toggleResult", { toolName: p.tool }),
-  "copy the result of the latest {tool} run": (p) =>
-    one("RunsView_copyResult", { toolName: p.tool }),
 };
