@@ -25,8 +25,9 @@ export type SessionRequest =
   /** `ayme inspect` and the Inspector window. */
   | { readonly inspector: InspectorRequest };
 
-/** The Tab a request names by the URL its page shows, as a listing's first
- * line prints it; without one, the most recently active Tab. */
+/** The Tab a request names by its id or the URL its page shows, as a
+ * listing's first line prints them; without one, the most recently active
+ * Tab. */
 type OnTab = { readonly tab?: string };
 
 /** What a Session answers: the text a command prints, and on success the

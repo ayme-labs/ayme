@@ -6,9 +6,10 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
        ayme capture --cdp=<url>
        ayme open [url] [--headed]
        ayme attach --cdp=<url>
-       ayme page-objects [--tab=<url>]
-       ayme tools [--tab=<url>]
-       ayme call <tool> [--params <json> | --params @<file>] [--tab=<url>]
+       ayme page-objects [--tab=<id> | --tab=<url>]
+       ayme tools [--tab=<id> | --tab=<url>]
+       ayme call <tool> [--params <json> | --params @<file>]
+                 [--tab=<id> | --tab=<url>]
        ayme inspect
        ayme mcp
        ayme detach
@@ -40,11 +41,14 @@ export const USAGE = `Usage: ayme capture <url> [--headless] [--start-recording]
   --params @<file>
                  Read that JSON object from <file>, a regular file of at most
                  1 MiB. A relative <file> starts at the project's folder.
+  --tab=<id>     Work on the tab with that id, such as t2, as the first line
+                 of ayme page-objects and ayme tools prints it, and not on
+                 the browser's most recently active tab. A tab keeps its id
+                 until it closes.
   --tab=<url>    Work on the most recently active tab whose page shows
-                 exactly <url>, as the first line of ayme page-objects prints
-                 it, and not on the browser's most recently active tab. A
-                 call of a tool that takes a Page Object Id runs on the tab
-                 of that Page Object: leave --tab out of it.
+                 exactly <url>, as that line prints it. A call of a tool that
+                 takes a Page Object Id runs on the tab of that Page Object:
+                 leave --tab out of it.
   inspect        Print the address of the Inspector on the Session: the
                  Page Objects and the tools of the Session's tab, to run by
                  hand. Open it in any browser; it works until the Session
@@ -118,7 +122,7 @@ export type Command =
       kind: "call";
       tool: string;
       params?: string;
-      /** The URL of the Tab `--tab` names. */
+      /** The id of the Tab `--tab` names, or the URL it shows. */
       tab?: string;
       json: boolean;
     } & Named)
@@ -233,7 +237,7 @@ function readSessionCommand(
   if (values.session === "") return fail("Give -s the name of a Session.");
   if (values.tab === "")
     return fail(
-      "Give --tab the URL a tab shows, as the first line of ayme page-objects prints it."
+      "Give --tab a tab's id or the URL it shows, as the first line of ayme page-objects prints them."
     );
   const [word, url, ...more] = positionals;
   const json = values.json ?? false;

@@ -68,7 +68,7 @@ const recorded = () =>
 
 it("records an ayme command run through its bin link: its arguments, folder and phase, then its exit code and all it printed", async () => {
   const bin = installCommand(
-    'process.stdout.write("Tab: List\\n");\nprocess.stdout.write("ListPage\\n");\nprocess.stderr.write("a warning\\n");\nprocess.exitCode = 0;\n'
+    'process.stdout.write("Tab t1: List\\n");\nprocess.stdout.write("ListPage\\n");\nprocess.stderr.write("a warning\\n");\nprocess.exitCode = 0;\n'
   );
 
   await run(bin, ["page-objects", "--tab=http://x/"], "setup");
@@ -88,7 +88,7 @@ it("records an ayme command run through its bin link: its arguments, folder and 
     pid: start!.pid,
     event: "end",
     code: 0,
-    stdout: "Tab: List\nListPage\n",
+    stdout: "Tab t1: List\nListPage\n",
     stderr: "a warning\n",
   });
 });
