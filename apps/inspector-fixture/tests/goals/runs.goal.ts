@@ -51,6 +51,7 @@ for (const placement of placements) {
         return null;
       });
       const ref = await appView.ref('button "Dismiss notice"');
+      await bringPanelToFront(inspector);
       await agent.act("show all runs in Runs");
       await appView.run("click", { target: ref });
       const run = inspector.runs.latest("click");
@@ -116,6 +117,7 @@ for (const placement of placements) {
       // The Add item button's ref, as snapshot gives it.
       const ref = await appView.ref('button "Add item"');
 
+      await bringPanelToFront(inspector);
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "mark_element" },
       });
@@ -139,10 +141,12 @@ for (const placement of placements) {
     test("a collection action runs on the item and choice picked with the mouse", async ({
       browser,
       agent,
+      inspector,
       listPage,
     }) => {
       await listPage.addItem("Milk");
       await listPage.addItem("Eggs");
+      await bringPanelToFront(inspector);
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "ListItem.mark" },
       });
@@ -180,6 +184,7 @@ for (const placement of placements) {
     }) => {
       await listPage.addItem("Milk");
 
+      await bringPanelToFront(inspector);
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "goal" },
       });
@@ -315,6 +320,7 @@ for (const placement of placements) {
         ],
         [await appView.ref('button "Clear"')],
       ];
+      await bringPanelToFront(inspector);
       await agent.act("open the {tool} tool in the Tools lens", {
         params: { tool: "generate_locator" },
       });
@@ -364,6 +370,7 @@ for (const placement of placements) {
           text: "Milk",
         });
 
+        await bringPanelToFront(inspector);
         await agent.act("open the {tool} tool in the Tools lens", {
           params: { tool: "ListPage.addItem" },
         });
@@ -404,6 +411,7 @@ for (const placement of placements) {
             "ListPage.addItem",
             { text: "Milk" }
           );
+          await bringPanelToFront(inspector);
           await agent.act("open the {tool} tool in the Tools lens", {
             params: { tool: "ListPage.addItem" },
           });
