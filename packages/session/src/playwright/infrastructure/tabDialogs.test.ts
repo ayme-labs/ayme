@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { expect, it } from "vitest";
 
 import type { TabDialog } from "../../session/domain";
-import { DIALOG_OPEN_MS, tabDialogs } from "./tabDialogs";
+import { DIALOG_OPEN_MS, dialogBeside, tabDialogs } from "./tabDialogs";
 
 const confirm = { type: "confirm", message: "Remove Milk?" };
 
@@ -385,4 +385,49 @@ it("a request the dialog stopped hears why: what its Caller was answered instead
   answered.open();
   await request;
   expect(dialogs.actionCalls.stopped()).toBeUndefined();
+});
+
+const window = "http://127.0.0.1:4100/";
+
+it("the dialog beside a Tab is the first that counts as open on another tab, with that tab's URL; one still opening, none, or a tab the Session does not watch names none", () => {
+  const alert = { type: "alert", message: "Saved." };
+
+  expect(
+    dialogBeside(
+      [
+        { url: "http://127.0.0.1:5173/a.html", dialog: undefined },
+        { url: "http://127.0.0.1:5173/b.html", dialog: "none" },
+        { url: "http://127.0.0.1:5173/c.html", dialog: "opening" },
+        { url: "http://127.0.0.1:5173/d.html", dialog: { open: confirm } },
+        { url: "http://127.0.0.1:5173/e.html", dialog: { open: alert } },
+      ],
+      window
+    )
+  ).toEqual({ url: "http://127.0.0.1:5173/d.html", dialog: confirm });
+  expect(
+    dialogBeside(
+      [
+        { url: "http://127.0.0.1:5173/a.html", dialog: "none" },
+        { url: "http://127.0.0.1:5173/c.html", dialog: "opening" },
+      ],
+      window
+    )
+  ).toBeUndefined();
+  expect(dialogBeside([], undefined)).toBeUndefined();
+});
+
+it("a tab that shows the Inspector window is no Tab, so its dialog is not the one beside a Tab; without a window every tab counts", () => {
+  const beside = [
+    { url: `${window}inspector`, dialog: { open: confirm } },
+    { url: "http://127.0.0.1:5173/d.html", dialog: { open: confirm } },
+  ] as const;
+
+  expect(dialogBeside(beside, window)).toEqual({
+    url: "http://127.0.0.1:5173/d.html",
+    dialog: confirm,
+  });
+  expect(dialogBeside(beside, undefined)).toEqual({
+    url: `${window}inspector`,
+    dialog: confirm,
+  });
 });
