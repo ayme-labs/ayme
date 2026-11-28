@@ -55,8 +55,8 @@ export type Gate = {
   pick(on: boolean): void;
 };
 
-/** Why a gate left an input to the page: Playwright would not hear of it,
- * or the adapter did not take it. */
+/** Why a gate left an input to the page: Playwright would not hear the
+ * document's calls, or the adapter did not take this one. */
 type Unheard = "unheard" | "refused";
 
 /** Whether a document's gate starts on, and the change that said so. */
@@ -217,7 +217,7 @@ export function gateIn(held: string, rules: GateRules): void {
    * send it on unless the adapter answers that it took it. False when
    * Playwright would not hear the call, or it could not be made: nothing is
    * held then. */
-  const tell = (input: HeldByPage, release: (why: Unheard) => void) => {
+  const tell = (input: HeldByPage, release: () => void) => {
     if (!heard()) return false;
     let answer: Promise<unknown>;
     try {
@@ -231,8 +231,8 @@ export function gateIn(held: string, rules: GateRules): void {
       return false;
     }
     void answer.then(
-      (taken) => taken === true || release("refused"),
-      () => release("unheard")
+      (taken) => taken === true || release(),
+      () => release()
     );
     return true;
   };
@@ -251,9 +251,9 @@ export function gateIn(held: string, rules: GateRules): void {
     told[why] = true;
   };
   /** Sends on an input the adapter did not take, as `send` makes it. */
-  const letGo = (why: Unheard, send: () => void) => {
+  const letGo = (send: () => void) => {
     arrived();
-    unheard(why);
+    unheard("refused");
     send();
   };
   const hold = (event: Event) => {
@@ -324,7 +324,7 @@ export function gateIn(held: string, rules: GateRules): void {
         modifiers: rules.modifiersOf(event),
         document: thisDocument,
       },
-      (why) => letGo(why, resendClick(event, target))
+      () => letGo(resendClick(event, target))
     );
   };
   const onClick = (event: MouseEvent) => {
@@ -428,7 +428,7 @@ export function gateIn(held: string, rules: GateRules): void {
         modifiers: rules.modifiersOf(event),
         document: thisDocument,
       },
-      (why) => letGo(why, resendKey(event, target, facts))
+      () => letGo(resendKey(event, target, facts))
     );
     if (!told) return unheard("unheard");
     hold(event);

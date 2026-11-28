@@ -2663,7 +2663,10 @@ it("sends on by itself a click and typing whose call Playwright rejects, on a pa
 
   await clickAndType(browser);
 
-  expect(await notRecorded(browser)).toEqual(unheardAt(browser.url));
+  expect(await notRecorded(browser)).toEqual({
+    kind: "notRecorded",
+    message: `An input on ${browser.url} is not recorded: the recorder could not read or take what the page told of it. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
+  });
 });
 
 it("warns of a document that changes JSON.stringify after Record, and leaves its click to it", async () => {

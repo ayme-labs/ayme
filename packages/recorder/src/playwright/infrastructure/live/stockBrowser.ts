@@ -421,7 +421,7 @@ async function openPage(
     unheard: (address) =>
       `Inputs on ${address} are not recorded: the page changed JSON.stringify, or how it writes an object, as Prototype.js 1.6 does, and Playwright reports every input through it. The inputs still reach the page, though a key may lose its own action, such as Enter's. Stop and finish in the recorder window, at the address the recorder printed.`,
     refused: (address) =>
-      `An input on ${address} is not recorded: the page told of it in a form the recorder does not take. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
+      `An input on ${address} is not recorded: the recorder could not read or take what the page told of it. The input still reaches the page, though a key may lose its own action, such as Enter's.`,
   };
   const heardOnConsole = (message: ConsoleMessage) => {
     if (message.type() !== "debug") return;
