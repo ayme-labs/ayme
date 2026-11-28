@@ -1,6 +1,7 @@
+import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 
-import { RecorderStartError } from "@ayme-dev/recorder";
+import { RecorderStartError, type RecordingOutcome } from "@ayme-dev/recorder";
 
 import {
   browserOf,
@@ -8,6 +9,7 @@ import {
   launchOptions,
   outcomeLine,
   outcomeReport,
+  runUntilEnd,
   startFailure,
   startLine,
   startLines,
@@ -234,5 +236,142 @@ describe("what to print, where, and the exit code, for an outcome", () => {
       text: "The recorder failed: ENOSPC\n",
       code: 1,
     });
+  });
+});
+
+/** A terminal the run is wired to: the process's events, and two streams
+ * that keep what is written. A stream that is gone fails each write as Node
+ * fails it, with an "error" event after the write. */
+function terminal() {
+  const output = () =>
+    Object.assign(new EventEmitter(), {
+      text: "",
+      gone: false,
+      write(
+        this: { text: string; gone: boolean } & EventEmitter,
+        text: string
+      ) {
+        if (this.gone)
+          process.nextTick(() => this.emit("error", new Error("write EIO")));
+        else this.text += text;
+        return true;
+      },
+    });
+  return Object.assign(new EventEmitter(), {
+    stdout: output(),
+    stderr: output(),
+  });
+}
+
+/** A recorder the test ends: `ends` counts how often it was asked to. */
+function recorder() {
+  let finish!: (outcome: RecordingOutcome) => void;
+  const done = new Promise<RecordingOutcome>((resolve) => (finish = resolve));
+  const handle = {
+    windowUrl: null,
+    ends: 0,
+    end() {
+      handle.ends += 1;
+    },
+    subscribe: () => () => {},
+    done,
+  };
+  return { handle, finish };
+}
+
+const launched = { launch: { url: "http://shop.test/", headless: true } };
+const saved: RecordingOutcome = { kind: "saved", folder: "/p/rec_1" };
+
+describe("how a run of codegen ends", () => {
+  it.each(["SIGINT", "SIGTERM", "SIGHUP"])(
+    "ends the recorder on %s, and tells the saved recording: Ctrl+C, a kill and a closed terminal end it alike",
+    async (signal) => {
+      const { handle, finish } = recorder();
+      const at = terminal();
+      const run = runUntilEnd(handle, launched, at);
+
+      at.emit(signal);
+      expect(handle.ends).toBe(1);
+      finish(saved);
+
+      expect(await run).toBe(0);
+      expect(at.stdout.text).toContain(
+        "Recording package: /p/rec_1/package.yaml\n"
+      );
+    }
+  );
+
+  it("goes on to the end when the terminal is gone and every write fails", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    at.stdout.gone = true;
+    at.stderr.gone = true;
+    at.emit("SIGHUP");
+    finish(saved);
+
+    expect(await run).toBe(0);
+    expect(handle.ends).toBe(1);
+  });
+
+  it.each(["uncaughtException", "unhandledRejection"])(
+    "ends the recorder on an error nothing caught (%s), as Ctrl+C does, says what it was, and fails",
+    async (event) => {
+      const { handle, finish } = recorder();
+      const at = terminal();
+      const run = runUntilEnd(handle, launched, at);
+
+      at.emit(
+        event,
+        Object.assign(new Error("boom"), { stack: "Error: boom\n    at here" })
+      );
+      expect(handle.ends).toBe(1);
+      finish(saved);
+
+      expect(await run).toBe(1);
+      expect(at.stderr.text).toBe(
+        "The recorder hit an error it did not expect, and ends with what it has recorded: Error: boom\n    at here\n"
+      );
+      expect(at.stdout.text).toContain(
+        "Recording package: /p/rec_1/package.yaml\n"
+      );
+    }
+  );
+
+  it("ends the recorder once for errors that come while it saves, tells each, and still tells the saved recording", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+
+    at.emit("uncaughtException", new Error("first"));
+    at.emit("unhandledRejection", "second");
+    at.emit("uncaughtException", new Error("third"));
+    expect(handle.ends).toBe(1);
+    finish(saved);
+
+    expect(await run).toBe(1);
+    expect(at.stderr.text).toContain("second\n");
+    expect(at.stderr.text).toContain("third");
+    expect(at.stdout.text).toContain(
+      "Recording package: /p/rec_1/package.yaml\n"
+    );
+  });
+
+  it("listens to the process no more once the recorder has ended: an error after it is the process's own", async () => {
+    const { handle, finish } = recorder();
+    const at = terminal();
+    const run = runUntilEnd(handle, launched, at);
+    finish(saved);
+    await run;
+
+    for (const event of [
+      "SIGINT",
+      "SIGTERM",
+      "SIGHUP",
+      "uncaughtException",
+      "unhandledRejection",
+    ])
+      expect(at.listenerCount(event), event).toBe(0);
   });
 });

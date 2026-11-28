@@ -161,27 +161,92 @@ async function start(
   }
 }
 
+/** The signals that end a run with a save: Ctrl+C, a kill, and the terminal
+ * closing, as a window, a tab or an SSH session does. */
+const ENDING_SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+
+/** The errors nothing caught, which would otherwise end the process at once,
+ * with nothing saved. */
+const UNCAUGHT = ["uncaughtException", "unhandledRejection"] as const;
+
+/** A stream of the terminal: a write to one that is gone fails with an
+ * "error" event. */
+type Output = {
+  write(text: string): unknown;
+  on(event: "error", listener: (error: Error) => void): unknown;
+};
+
+/** What a run is wired to: the process, for its signals and the errors
+ * nothing caught, and the terminal's two streams. */
+export type Terminal = {
+  on(
+    event: (typeof ENDING_SIGNALS)[number] | (typeof UNCAUGHT)[number],
+    listener: (cause?: unknown) => void
+  ): unknown;
+  off(
+    event: (typeof ENDING_SIGNALS)[number] | (typeof UNCAUGHT)[number],
+    listener: (cause?: unknown) => void
+  ): unknown;
+  readonly stdout: Output;
+  readonly stderr: Output;
+};
+
+/**
+ * Runs a started recorder to its end, wired to the terminal. Resolves with
+ * the process's exit code: the outcome's, or 1 after an error nothing
+ * caught, which ends the recorder as Ctrl+C does, with a save.
+ */
+export async function runUntilEnd(
+  recorder: Pick<Recorder, "end" | "done" | "subscribe" | "windowUrl">,
+  browser: RecorderOptions["browser"],
+  terminal: Terminal
+): Promise<number> {
+  // Once the terminal is gone, every write fails with an "error" event,
+  // which would end the process: the save goes on all the same, with nobody
+  // to tell.
+  terminal.stdout.on("error", () => {});
+  terminal.stderr.on("error", () => {});
+  const write = (stream: "stdout" | "stderr", text: string) =>
+    void terminal[stream].write(text);
+
+  // Another stop lands here again and does no harm.
+  const end = () => recorder.end();
+  let broke = false;
+  const unexpected = (cause?: unknown) => {
+    write(
+      "stderr",
+      `The recorder hit an error it did not expect, and ends with what it has recorded: ${cause instanceof Error ? (cause.stack ?? cause.message) : String(cause)}\n`
+    );
+    // Ended once: an error the save itself throws only adds its line.
+    if (broke) return;
+    broke = true;
+    end();
+  };
+  for (const signal of ENDING_SIGNALS) terminal.on(signal, end);
+  for (const event of UNCAUGHT) terminal.on(event, unexpected);
+  try {
+    write("stdout", startLines(browser, recorder.windowUrl));
+    const printWarnings = warningPrinter((text) => write("stderr", text));
+    recorder.subscribe((update) => printWarnings(update.state.warnings));
+
+    const { stream, text, code } = outcomeReport(await recorder.done);
+    write(stream, text);
+    return broke ? 1 : code;
+  } finally {
+    // An error after the end is the process's own again.
+    for (const signal of ENDING_SIGNALS) terminal.off(signal, end);
+    for (const event of UNCAUGHT) terminal.off(event, unexpected);
+  }
+}
+
 /**
  * Runs `codegen <url>`, or `codegen --cdp-endpoint <address>` when given
  * the running browser's address, to its end. Resolves with the process's
- * exit code. What it prints and which code it gives are decided above; this
- * is the wiring to the terminal's signals and streams.
+ * exit code.
  */
 export async function codegen(target: Target): Promise<number> {
   const browser = browserOf(target, process.env);
   const recorder = await start(browser);
   if (!recorder) return 1;
-
-  // The terminal's stop ends the recorder. Another one lands here again and
-  // does no harm.
-  const end = () => recorder.end();
-  process.on("SIGINT", end);
-  process.on("SIGTERM", end);
-  process.stdout.write(startLines(browser, recorder.windowUrl));
-  const printWarnings = warningPrinter((text) => process.stderr.write(text));
-  recorder.subscribe((update) => printWarnings(update.state.warnings));
-
-  const { stream, text, code } = outcomeReport(await recorder.done);
-  process[stream].write(text);
-  return code;
+  return runUntilEnd(recorder, browser, process);
 }
