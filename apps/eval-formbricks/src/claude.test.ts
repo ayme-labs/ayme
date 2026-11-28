@@ -105,14 +105,14 @@ describe("claudeArguments for the playwright-cli arm", () => {
     ],
   });
 
-  it("gives the agent the skill and Bash limited to the CLI, with no MCP server file entries", () => {
+  it("gives the agent the skill and every Bash command, with no MCP server file entries", () => {
     expect(args).toEqual(
       expect.arrayContaining([
         "--tools",
         "Read,Glob,Grep,ToolSearch,Bash,Skill",
         "--strict-mcp-config",
         "--allowedTools",
-        "Bash(playwright-cli:*),Skill(playwright-cli)",
+        "Bash,Bash(playwright-cli:*),Skill(playwright-cli)",
       ])
     );
   });

@@ -325,10 +325,19 @@ const targetIdOf = (page: Page) => {
   return id;
 };
 
-/** The Tab's page as its Host reaches it through `caller`, running
+/** The document `page`'s main frame shows now, as ayme's DevTools session
+ * tells it: the loader id Chromium gives each new document. */
+const documentOf = async (page: Page) => {
+  const { frameTree } = await (await devtools(page)).send("Page.getFrameTree");
+  const { loaderId, url, urlFragment = "" } = frameTree.frame;
+  return { id: loaderId, url: url + urlFragment };
+};
+
+/** The Tab's `page` as its Host reaches it through `caller`, running
  * `classes` on the Node Host `ayme` of `entry`, each Run a request of
  * `dialogs`, which a dialog stops. */
 const hostedTab = (
+  page: Page,
   caller: ReturnType<NodeHostEntry["pageObjectCallerOf"]>,
   inspector: InspectorPort,
   { dialogs, dialog }: Pick<Watch, "dialogs" | "dialog">,
@@ -345,13 +354,24 @@ const hostedTab = (
       new TabReadError(`ayme could not read the page: ${reason(cause)}`),
   }),
   call: (tool, input) =>
-    Effect.tryPromise({
-      try: () =>
-        dialogs.request(() =>
-          failingOnItsUncaught(() => caller.run(tool, input))
-        ),
-      catch: runErrorOf,
+    Effect.suspend(() => {
+      let acted = () => true;
+      return Effect.tryPromise({
+        try: () =>
+          dialogs.request((inRequest) => {
+            acted = inRequest;
+            return failingOnItsUncaught(() => caller.run(tool, input));
+          }),
+        catch: (cause) => runErrorOf(cause, acted()),
+      });
     }),
+  document: Effect.tryPromise({
+    try: () => documentOf(page),
+    catch: (cause) =>
+      new TabReadError(
+        `ayme could not read the tab's document: ${reason(cause)}`
+      ),
+  }),
   // A Run from the window fails on what its code left uncaught, as a
   // command's does.
   inspector: tabInspector({
@@ -454,6 +474,7 @@ const hostOn =
         if (page.isClosed()) stop();
         else page.once("close", stop);
         return hostedTab(
+          page,
           entry.pageObjectCallerOf(ayme, CALLER),
           lazyPort(() => entry.inspectorPortOf(ayme)),
           watch,

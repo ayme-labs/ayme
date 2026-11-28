@@ -378,6 +378,23 @@ export const dialogOpenInListing = (
   dialog: Dialog
 ): string => `${tabLine(id, { url, title: "" })}\n${dialogOpen(dialog)}`;
 
+/** Why a command read no page: the Tab's main frame started loading a new
+ * document at `url` while ayme read it. Waiting for a load belongs to
+ * whoever drives the browser (ADR-0070), so the agent waits with its
+ * browser automation; ayme neither waits nor reads again. */
+export const pageLoading = (url: string): string =>
+  `The page started loading ${url} while ayme read it. Wait for the load with your browser automation, then run this command again.`;
+
+/** Why a listing of the Tab `id` at `url` read no page: it started loading
+ * `loading` meanwhile. It still starts with the Tab line, as a listing a
+ * dialog answered does, and names the Tab by its URL, since the document
+ * that would give its title is still loading. */
+export const pageLoadingInListing = (
+  id: string,
+  url: string,
+  loading: string
+): string => `${tabLine(id, { url, title: "" })}\n${pageLoading(loading)}`;
+
 /** Why a command was answered before its Tab was set up. `heldBy` is the
  * dialog the Session counts as open on another Tab, with that Tab's URL,
  * when it knows of one: the likely cause, which the Session cannot prove,

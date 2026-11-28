@@ -14,6 +14,8 @@ export {
   NO_TAB_OPEN,
   noTabShows,
   openedAnswer,
+  pageLoading,
+  pageLoadingInListing,
   pageObjectsAnswer,
   paramsNotJson,
   paramsNotAFile,
@@ -54,6 +56,7 @@ export {
   type InspectorRequest,
 } from "./inspector";
 export { TabDialogOpen, type Dialog, type TabDialog } from "./dialog";
-export { RunError, type RunAnswer } from "./run";
+export { ActionNotStarted, RunError, type RunAnswer } from "./run";
+export { TabLoading, type TabDocument } from "./loading";
 export type { SessionAnswer, SessionEnd, SessionRequest } from "./requests";
 export { brokenRebuild, brokenStart, SessionStartError } from "./startError";

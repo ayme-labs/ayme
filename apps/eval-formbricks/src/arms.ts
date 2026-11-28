@@ -100,7 +100,12 @@ export type Arm = {
   skill?: string;
   /** Built-in Claude Code tools the agent keeps. Read-only file tools; the arm's interface does the rest. */
   tools: string[];
-  /** Permission rules letting the agent call the arm's interface without a prompt. */
+  /**
+   * Permission rules letting the agent call the arm's interface without a
+   * prompt. An arm with Bash allows every command; its interface's own
+   * command lines are listed too, since Codex lets out of its sandbox only
+   * the commands listed (see `codexRules`).
+   */
   allowedTools: string[];
   /** Permission rules that stay denied, whatever the interface's own skill allows. */
   disallowedTools?: string[];
@@ -124,6 +129,15 @@ export type Arm = {
  */
 const baseTools = ["Read", "Glob", "Grep", "ToolSearch"];
 
+/**
+ * Every Bash command, the leeway an agent has in a developer's environment:
+ * with only its interface's command allowed, Claude Code refused commands
+ * such as one that sets a shell variable first, or reads a saved snapshot
+ * with `sed`, and runs failed on that alone. The arm's refused commands
+ * stay refused, and the task's own rules stay in the prompt.
+ */
+export const anyCommand = "Bash";
+
 /** A command with and without arguments, as permission rules. */
 function bashCommand(command: string) {
   return [`Bash(${command})`, `Bash(${command}:*)`];
@@ -135,6 +149,14 @@ function startState(start: Mission["start"]) {
     : "on the sign-in page, not signed in";
 }
 
+/**
+ * What the agent-browser lines say of its session: agent-browser's guide
+ * has an agent work in a named session, and the session the harness opened
+ * is the one a command without `--session` reaches.
+ */
+const agentBrowserSession =
+  "It is agent-browser's default session: pass no `--session`.";
+
 /** Each browser automation's interface line when it runs alone. */
 const aloneLines: Record<
   BrowserAutomation,
@@ -145,7 +167,7 @@ const aloneLines: Record<
   "playwright-cli": (start) =>
     `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`playwright-cli snapshot\`.`,
   "agent-browser": (start) =>
-    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`agent-browser snapshot\`.`,
+    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}; start from \`agent-browser snapshot\`. ${agentBrowserSession}`,
 };
 
 /**
@@ -168,7 +190,7 @@ const withAymeLines: Record<
   "playwright-cli": (start) =>
     `Use the \`playwright-cli\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${aymeSentence}`,
   "agent-browser": (start) =>
-    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${aymeSentence}`,
+    `Use the \`agent-browser\` command for every browser interaction. Its browser session is already open ${startState(start)}. ${agentBrowserSession} ${aymeSentence}`,
 };
 
 /** What each browser automation runs on and is set up with; an arm with ayme adds to it. */
@@ -192,7 +214,11 @@ const browserAutomations: Record<
     skill: "playwright-cli",
     // The skill is loaded through the Skill tool, in the setup turn; Bash is only the CLI.
     tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(playwright-cli:*)", "Skill(playwright-cli)"],
+    allowedTools: [
+      anyCommand,
+      "Bash(playwright-cli:*)",
+      "Skill(playwright-cli)",
+    ],
     disallowedTools: [
       // The skill pre-approves `npx playwright`, which would run the lab app's own Playwright, or download one.
       "Bash(npx:*)",
@@ -210,7 +236,7 @@ const browserAutomations: Record<
   "agent-browser": {
     skill: "agent-browser",
     tools: [...baseTools, "Bash", "Skill"],
-    allowedTools: ["Bash(agent-browser:*)", "Skill(agent-browser)"],
+    allowedTools: [anyCommand, "Bash(agent-browser:*)", "Skill(agent-browser)"],
     disallowedTools: [
       // The skill's guide pre-approves `npx agent-browser`, which could fetch another version.
       "Bash(npx:*)",
@@ -275,7 +301,10 @@ function armWithAyme(browserAutomation: BrowserAutomation): Arm {
     interfaceLine: withAymeLines[browserAutomation],
     ...(base.skill === undefined ? {} : { skill: base.skill }),
     tools: [...new Set([...base.tools, "Bash", "Skill"])],
-    allowedTools: [...base.allowedTools, ...aymeAllowedTools],
+    // Bash comes with ayme, so every command does too.
+    allowedTools: [
+      ...new Set([anyCommand, ...base.allowedTools, ...aymeAllowedTools]),
+    ],
     disallowedTools: [...(base.disallowedTools ?? []), ...aymeDisallowedTools],
     mcpServers: () => ({}),
     // Only `ayme open` starts a browser of the project's Playwright.

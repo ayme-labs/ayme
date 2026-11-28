@@ -479,3 +479,33 @@ it("a tab that shows the Inspector window is no Tab, so its dialog is not the on
     dialog: confirm,
   });
 });
+
+it("a request tells whether an action started in it: not before the Host runs one, and from then on", async () => {
+  const { dialogs } = scripted();
+  const seen: boolean[] = [];
+
+  await dialogs.request(async (acted) => {
+    seen.push(acted());
+    await Promise.resolve();
+    seen.push(acted());
+    await action(dialogs, () => seen.push(acted())).end();
+    seen.push(acted());
+  });
+
+  expect(seen).toEqual([false, false, true, true]);
+});
+
+it("an action outside a request, or in another one, starts none in a request", async () => {
+  const { dialogs } = scripted();
+  let acted = () => true;
+
+  const asked = dialogs.request(async (inRequest) => {
+    acted = inRequest;
+    await Promise.resolve();
+  });
+  action(dialogs).end();
+  await dialogs.request(async () => void action(dialogs).end());
+  await asked;
+
+  expect(acted()).toBe(false);
+});

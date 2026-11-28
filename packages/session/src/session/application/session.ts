@@ -12,6 +12,7 @@ import {
 } from "effect";
 
 import {
+  ActionNotStarted,
   brokenStart,
   callAnswer,
   detachRefused,
@@ -31,6 +32,8 @@ import {
   NO_TAB_OPEN,
   noTabShows,
   openedAnswer,
+  pageLoading,
+  pageLoadingInListing,
   pageObjectsAnswer,
   RunError,
   runFailed,
@@ -46,6 +49,7 @@ import {
   SessionStartError,
   type TabDialog,
   TabDialogOpen,
+  TabLoading,
   unknownRequest,
   withBuildLine,
   withTabsAlike,
@@ -66,6 +70,7 @@ import {
 import {
   SessionBrowser,
   type HeldBrowser,
+  type HostedTab,
   type BrowserTab,
   type BrowserTabs,
   type SessionBrowserRequest,
@@ -224,7 +229,9 @@ export const openSession = (
           failed(
             error instanceof TabDialogOpen
               ? dialogOpenInListing(error.id, error.url, error.dialog)
-              : error.message
+              : error instanceof TabLoading
+                ? pageLoadingInListing(error.id, error.url, error.loading)
+                : error.message
           )
         );
       const unhosted = (error: Error) =>
@@ -458,7 +465,7 @@ function sessionTabs(
           Effect.flatMap((hosted) => {
             const turn = turns(ending);
             return rebuilds
-              .swapping(hosted, startedWith, {
+              .swapping(atLoads(hosted, tab, idOf(tab)), startedWith, {
                 inTurn: turn.inTurn,
                 closed: tab.closed,
               })
@@ -597,6 +604,55 @@ function untilClosed(
     dialog: hosted.dialog,
     takesId: hosted.takesId,
     buildLine: hosted.buildLine,
+  };
+}
+
+/**
+ * `hosted`, the Host of `tab`, whose id is `id`: its listing, and its Run
+ * that failed before its action started, fail with the page loading when
+ * the Tab's main frame started a new document while they read the page.
+ * It reads the Tab's document before and after them, in the Tab's turn; a
+ * document it cannot read leaves the failure as it was, and so does every
+ * other failure. Nothing waits for the load, nor reads again (ADR-0070).
+ */
+function atLoads(hosted: HostedTab, tab: BrowserTab, id: string): HostedTab {
+  const document = Effect.option(hosted.document);
+  const loading = <A, E>(
+    work: Effect.Effect<A, E>,
+    acted: (error: E) => boolean,
+    loads: (error: E, url: string) => E
+  ): Effect.Effect<A, E> =>
+    Effect.flatMap(document, (before) =>
+      work.pipe(
+        Effect.catch((error) =>
+          acted(error) || Option.isNone(before)
+            ? Effect.fail(error)
+            : Effect.flatMap(document, (after) =>
+                Effect.fail(
+                  Option.isSome(after) && after.value.id !== before.value.id
+                    ? loads(error, after.value.url)
+                    : error
+                )
+              )
+        )
+      )
+    );
+  return {
+    ...hosted,
+    listing: loading(
+      hosted.listing,
+      () => false,
+      (_, url) => new TabLoading(id, tab.url(), url)
+    ),
+    // A Run whose action started may have changed the page, so its error
+    // stays: running it again could repeat the action.
+    call: (tool, input) =>
+      loading(
+        hosted.call(tool, input),
+        (error) => !(error instanceof ActionNotStarted),
+        (error, url) =>
+          new RunError(pageLoading(url), error.changes, error.going)
+      ),
   };
 }
 

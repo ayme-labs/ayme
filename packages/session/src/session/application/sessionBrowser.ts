@@ -6,6 +6,7 @@ import type {
   RunError,
   SessionStartError,
   TabDialog,
+  TabDocument,
   TabReadError,
 } from "../domain";
 import type { BuiltPageObjects } from "./pageObjectsBuild";
@@ -34,6 +35,11 @@ export interface HostedTab {
   /** The Tab's dialog as the Session counts it now, and again after each
    * change (rule 4). It reads nothing of the page, which a dialog holds. */
   readonly dialog: Stream.Stream<TabDialog>;
+  /** Reads which document the Tab's main frame shows now, as the browser
+   * tells it without the page's JavaScript, so a read of the page that
+   * failed can tell whether a new document started meanwhile. ayme adds no
+   * time limit. */
+  readonly document: Effect.Effect<TabDocument, TabReadError>;
   /** Reads the Page Objects on the Tab's page now, as a Run reads them
    * before its action, so their tools are what the page shows. */
   readonly observe: Effect.Effect<void, TabReadError>;

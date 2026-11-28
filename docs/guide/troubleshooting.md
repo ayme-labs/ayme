@@ -35,6 +35,7 @@ These are for a coding agent that runs your Page Object Tools with the `ayme` co
 - **A Page Object's tools are missing**: its class is not listed in `ayme/page-objects.ts`, and no listed class reaches it; or it is not present on the Tab ayme works on. The first line of `ayme page-objects` names that Tab: the browser's most recently active one.
 - **`ayme attach` fails with `Timeout 30000ms exceeded`**: check that the browser runs and that the address is its DevTools address. An open dialog also blocks the connection: Chrome answers no new connection while a dialog is open in one of its pages. Answer the dialog with the browser automation, then run `ayme attach` again. Connect the automation before an action can open a dialog, so it can answer it.
 - **`No tab is open in the Session's browser.`**: open one with the browser automation.
+- **`The page started loading <url> while ayme read it. …`**: the Tab started loading a new document, as after a sign-in, while the command read the page, so the command did nothing. Wait for the load with the browser automation, then run the command again.
 - **`ayme open` cannot start Chromium**: install it for the project's Playwright with `npx playwright install chromium`.
 
 ## A Peek is missing from the Inspector
