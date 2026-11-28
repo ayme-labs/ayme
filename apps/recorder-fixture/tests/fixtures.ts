@@ -71,9 +71,8 @@ export type Run = {
   waitForStdout(text: string): Promise<void>;
   /** Sends the signal the terminal's stop sends. */
   interrupt(): void;
-  /** Closes the terminal, as closing its window or a dropped SSH session
-   * does: nothing the run writes reaches it any more, and it is sent
-   * SIGHUP. */
+  /** Closes the test's end of the run's output pipes, so its writes fail,
+   * and sends it SIGHUP: what a closed terminal does, on pipes. */
   hangUp(): void;
   /** Closes the page at `url` in the recorder's browser, as the person
    * would, over the test's own connection to that browser. */

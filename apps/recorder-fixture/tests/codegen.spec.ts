@@ -167,7 +167,7 @@ test.describe("codegen <url>", () => {
     );
   });
 
-  test("closing the terminal ends the recorder as Ctrl+C does: the recording and the storage state are saved, though nothing it writes reaches the terminal any more", async ({
+  test("SIGHUP, which a closed terminal sends, ends the recorder as Ctrl+C does: the recording and the storage state are saved, also with the command's output closed", async ({
     fixturePages,
     runRecorder,
   }, testInfo) => {
