@@ -91,11 +91,7 @@ export async function readPageObjectTree(
     const id = given[index]?.id;
     if (id) node.id = id;
   });
-  return {
-    objects: tree,
-    tree: captured.tree,
-    ...(captured.document && { document: captured.document }),
-  };
+  return { objects: tree, tree: captured.tree };
 }
 
 type MutableNode = {

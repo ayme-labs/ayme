@@ -74,6 +74,6 @@ To start, open a Session as [Connect an agent](guides/connect-an-agent.md#connec
 
 - **In a Session, your Page Object Actions run on your project's Playwright library**, not on ayme's own in-page version of it. The Session does not load your Playwright Test config or fixtures: see [Limits](guides/connect-an-agent.md#limits).
 - **ayme never answers a dialog.** Your browser automation answers it. When an action stops at a dialog, check what changed on the page before you continue. See [Dialogs](guides/connect-an-agent.md#dialogs).
-- **A Run can answer later.** When an action returns a Page Object whose model declares or inherits `present`, the Run answers once that predicate holds, or at the Settled Page deadline. [The Page Object an action returns](guides/page-state.md#the-page-object-an-action-returns) says when the wait starts and when there is none.
+- **Over Playwright in Node, a call that starts a full load answers later.** It lasts until its action returns, and answers with what the action returned or fails with what it threw, as in a Session. [What a call waits for](guides/page-state.md#what-a-call-waits-for) says more.
 - **`@ayme-dev/inspector/external` shows a Session's Inspector**, as `ayme inspect` and `ayme mcp` serve it, and no longer a paired page's. If you hosted the old external Inspector yourself, use `ayme inspect` or `ayme mcp` instead.
 - **An edit to your Page Objects takes effect without a restart.** The Session rebuilds them and swaps them in between Runs. See the Edits item in [Sessions](guides/connect-an-agent.md#sessions).

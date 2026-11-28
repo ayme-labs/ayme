@@ -80,8 +80,7 @@ ayme call ProjectRow.rename --params '{"id": "po1", "args": {"name": "Launch pla
 `ayme call` answers in a few lines:
 
 - `settled`: whether the page settled after the action. It is `false` after
-  an action that started loading a new document, even when the answer
-  already comes from the new page.
+  an action that started loading a new document.
 - `result`: what the action returned, when that is a JSON value.
 - `url`: the new URL, when the action changed it.
 - `changes`: how the Page Object Tree changed. A Page Object that appeared
