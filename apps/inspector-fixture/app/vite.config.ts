@@ -10,9 +10,8 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
  * workspace packages resolve to their `dist`, as they ship. The ayme plugin
  * compiles and registers the Page Objects in `ayme/pom/`, the way an app's are.
  * The one exception is the Inspector's own Page Object, which the dogfood
- * page registers: test support resolves to source (ADR-0057), and
- * `ayme/pom/Inspector.ts` reaches it by a relative path, so the plugin
- * compiles it too.
+ * page registers: test support resolves to source (ADR-0057), and the path
+ * in tsconfig.json has the plugin compile it too.
  */
 export default defineConfig({
   root: here("."),
