@@ -5,9 +5,11 @@ import type { InspectorContract } from "@ayme-dev/ayme/inspector";
 
 import { renderInspector } from "./renderInspector";
 import { replaceInspectorTransport } from "../shared/infrastructure";
+import { ThemeSwitch } from "../../testing";
 
-// Component tests: what the Inspector's own window says while its Session
-// has told it of no Tab, over a transport the test drives.
+// Component tests: the Inspector's own window over a transport the test
+// drives: what it says while its Session has told it of no Tab, and its
+// theme.
 
 const page = createPage();
 const hint = page.getByText(
@@ -61,4 +63,15 @@ it("says nothing in the inline panel", async () => {
   const navigator = page.getByRole("navigation", { name: "Navigator" });
   await expect.poll(() => navigator.count()).toBe(1);
   expect(await hint.count()).toBe(0);
+});
+
+it("takes the theme chosen in a Session's window's header", async () => {
+  render(true, true);
+  const theme = new ThemeSwitch(
+    page.getByRole("complementary", { name: "ayme" })
+  );
+
+  await theme.choose("Dark");
+
+  expect(await theme.current()).toBe("Dark");
 });
