@@ -84,6 +84,11 @@ CONSTANTS
   StartFails, \* a request Record waits for may fail: the trace's start,
               \* switching Playwright's reports on, or the pages' gate (L
               \* cannotStart, after Record, not after Continue)
+  ReadsTimeOut,\* a read of the open page that held inputs, the wrap-up or a
+              \* Continue wait for may not be answered in its time (L
+              \* HELD_READ_LIMIT_MS, READ_LIMIT_MS; RS limit), as on a page
+              \* that is never read (#1525). No clock: any such read still
+              \* awaited may run out, whichever limit it has
   Buttons     \* what the person clicks with: a subset of {"left", "right",
               \* "middle", "leftOnCheckbox", "middleOnCheckbox"}; Playwright
               \* reports a click on a checkbox as a check, which names no button.
@@ -118,8 +123,10 @@ VARIABLES
                   \*   asked (L ending) | saved | failed (a warning); the end
                   \*   is told once it is saved or failed (L ended)
   gen,            \* how many times the recording was thrown away
-  pgHold, pgLatest,  \* L PageGate: the engine's note that the page holds what
+  pgHold, pgLatest, pgMoved,  \* L PageGate: the engine's note that the page holds what
                      \* follows; the page's latest snapshot (0 = none)
+  pgMoved,        \* L PageGate.moved: an input reached the page, or was reported
+                  \* on it, since its latest snapshot
   pgReported,     \* L PageGate.reported: Playwright reported on the page since
                   \* Record or Continue
   pgLastFill,     \* L PageGate.lastFill: the fill written last while nothing
@@ -137,6 +144,8 @@ VARIABLES
   repOf,          \* per entry: whose report it has (an input)
   unrep, revised, \* L Input.unreported, L Input.revised
   bsnap, asnap,   \* per entry: its "before" and "after" snapshot (0 = none)
+  noAfter,        \* entries whose "after" was not answered in time: kept with
+                  \* their "before" only (L withoutItsSnapshot)
   pend,           \* snapshots asked and not yet in, in the order asked (a page
                   \* answers them in that order): each is the set of who waits
                   \* for it, <<e,"b">>, <<e,"a">>, <<0,"final">>, <<0,"resume">>
@@ -182,9 +191,9 @@ VARIABLES
   stops, rounds, finishAgain, asserts
 
 engVars == <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-             traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
+             traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest, pgMoved,
              pgReported, pgLastFill, els, pic,
-             lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+             lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend,
              passReq, gateQ, modeQ, traceQ, tl, tlAtPause, dis, kept, revLost,
              pkg, saves, pkgHas, pkgDis, holdPg,
              keptSn, newT, pkgNew, shown, txt, fin, pos>>
@@ -206,10 +215,11 @@ Eng == [phase |-> phase, boot |-> boot, resumed |-> resumed, picking |-> picking
         switchingOff |-> switchingOff, traceStarting |-> traceStarting,
         discarding |-> discarding, stopping |-> stopping, savedTold |-> savedTold,
         storage |-> storage,
-        gen |-> gen, pgHold |-> pgHold, pgLatest |-> pgLatest, lst |-> lst,
+        gen |-> gen, pgHold |-> pgHold, pgLatest |-> pgLatest, pgMoved |-> pgMoved, lst |-> lst,
         pgReported |-> pgReported, pgLastFill |-> pgLastFill, els |-> els, pic |-> pic,
         ent |-> ent, stage |-> stage, rep |-> rep, repOf |-> repOf,
         unrep |-> unrep, revised |-> revised, bsnap |-> bsnap, asnap |-> asnap,
+        noAfter |-> noAfter,
         pend |-> pend, passReq |-> passReq, gateQ |-> gateQ, modeQ |-> modeQ,
         traceQ |-> traceQ, tl |-> tl, tlAtPause |-> tlAtPause, dis |-> dis,
         kept |-> kept, revLost |-> revLost, pkg |-> pkg, saves |-> saves,
@@ -227,11 +237,11 @@ Commit(t) ==   \* t is computed once (TLC passes arguments unevaluated)
     /\ traceStarting' = s.traceStarting /\ discarding' = s.discarding
     /\ stopping' = s.stopping /\ savedTold' = s.savedTold /\ gen' = s.gen
     /\ storage' = s.storage
-    /\ pgHold' = s.pgHold /\ pgLatest' = s.pgLatest /\ lst' = s.lst
+    /\ pgHold' = s.pgHold /\ pgLatest' = s.pgLatest /\ pgMoved' = s.pgMoved /\ lst' = s.lst
     /\ pgReported' = s.pgReported /\ pgLastFill' = s.pgLastFill /\ els' = s.els /\ pic' = s.pic
     /\ ent' = s.ent /\ stage' = s.stage /\ rep' = s.rep /\ repOf' = s.repOf
     /\ unrep' = s.unrep /\ revised' = s.revised /\ bsnap' = s.bsnap
-    /\ asnap' = s.asnap /\ pend' = s.pend /\ passReq' = s.passReq
+    /\ asnap' = s.asnap /\ noAfter' = s.noAfter /\ pend' = s.pend /\ passReq' = s.passReq
     /\ gateQ' = s.gateQ /\ modeQ' = s.modeQ /\ traceQ' = s.traceQ
     /\ tl' = s.tl /\ tlAtPause' = s.tlAtPause /\ dis' = s.dis /\ kept' = s.kept
     /\ revLost' = s.revLost /\ pkg' = s.pkg /\ saves' = s.saves
@@ -410,6 +420,7 @@ GiveAll(s, os, t) ==
 SnapIn(s, r, t) ==
   LET stale == DocAt(t) # doc
       s1 == [s EXCEPT !.pend = Tail(@), !.pgLatest = IF stale THEN @ ELSE t,
+                      !.pgMoved = IF stale THEN @ ELSE FALSE,
                       !.keptSn = @ \cup {t}]
       s2 == GiveAll(s1, {o \in r : o[1] # 0}, t)
   IN IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2
@@ -696,6 +707,7 @@ KnownFromReport(s, e, i, pc) ==
       k == IF hw = {} THEN Len(s.lst) + 1 ELSE Pos(s, First(s, hw))
       s1 == GiveUpEarlier(s, k)
   IN [s1 EXCEPT !.lst = InsertAt(@, k, e), !.ent[e] = "rep", !.stage[e] = "waiting",
+                !.pgMoved = TRUE,
                 !.rep[e] = TRUE, !.repOf[e] = i, !.bsnap[e] = 0, !.asnap[e] = 0,
                 !.unrep[e] = FALSE, !.revised[e] = FALSE, !.txt[e] = 1,
                 !.shown[e] = FALSE, !.fin[e] = FALSE, !.pos[e] = 0, !.pic[e] = pc]
@@ -747,11 +759,15 @@ OnInputHeld(s, e, k) ==
        IN Proceed(IF early # 0 /\ s.stage[early] = "settling"
                   THEN AskShared(s1, early, e) ELSE s1, FALSE)
 
-\* L inputPassedOn
-OnPassedOn(s, e) ==
-  IF ~During(s) THEN s
-  ELSE IF ~InL(s, e) \/ s.stage[e] # "passingOn" THEN Proceed(s, FALSE)
-  ELSE IF s.ent[e] = "key"
+\* L inputPassedOn. An input that starts at a lost read (a "before" no
+\* read keeps) makes that read the page's latest; then the page has moved.
+OnPassedOn(s0, e) ==
+  IF ~During(s0) THEN s0
+  ELSE IF ~InL(s0, e) \/ s0.stage[e] # "passingOn" THEN Proceed(s0, FALSE)
+  ELSE
+  LET lost == s0.bsnap[e] # 0 /\ s0.bsnap[e] \notin s0.keptSn
+      s == [s0 EXCEPT !.pgLatest = IF lost THEN s0.bsnap[e] ELSE @, !.pgMoved = TRUE] IN
+  IF s.ent[e] = "key"
        THEN Proceed([s EXCEPT !.stage[e] = IF s.phase = "wrap" THEN "settling" ELSE "settled"], FALSE)
   ELSE LET later == First(s, {f \in Elems(s.lst) : s.stage[f] = "waiting"}) IN
        Proceed(IF later # 0 THEN AskShared(s, e, later)
@@ -772,6 +788,51 @@ OnSettled(s, e) ==
 \* A snapshot nobody waits for any more is ignored.
 OnSnapshot(s, r, t) ==
   IF ~During(s) THEN [s EXCEPT !.pend = Tail(@)] ELSE Proceed(SnapIn(s, r, t), FALSE)
+
+\* L withoutItsSnapshot, for one who waited for a read that was not answered
+\* in time. An "after" is given up: the entry keeps its "before" only. A held
+\* input is passed on all the same; a click starts from the page's latest
+\* read while nothing moved the page since (L PageGate.moved), or else from a
+\* read the timeline is told was lost, which holds its place at lost (a stamp
+\* no read keeps). Neither is marked as showing the focus its press moved
+\* (TL pressedAfter, skipped for beforeEarlier; Press is not applied). A
+\* held key needs no "before" once the page has a read; without one, the
+\* lost read is where its typing starts (OnPassedOn).
+WithoutSnap(s, o, lost) ==
+  LET e == o[1] IN
+  IF e = 0 THEN s
+  ELSE IF o[2] = "a"
+       THEN IF s.stage[e] # "takingAfter" THEN s
+            ELSE [s EXCEPT !.stage[e] = "settled", !.noAfter = @ \cup {e}]
+  ELSE IF s.stage[e] # "takingBefore" THEN s
+  ELSE LET b == IF s.ent[e] = "key"
+                THEN (IF s.pgLatest # 0 THEN 0 ELSE lost)
+                ELSE IF s.pgLatest # 0 /\ ~s.pgMoved THEN s.pgLatest ELSE lost
+           \* what came before, with a read under way for its "after", ends
+           \* where this starts; that read's answer is no one's
+           open == {f \in Elems(s.lst) : f # e /\ s.stage[f] = "takingAfter"}
+           s1 == IF b = 0 THEN s
+                 ELSE [s EXCEPT !.stage = [f \in Ids |-> IF f \in open THEN "settled" ELSE @[f]],
+                                !.asnap = [f \in Ids |-> IF f \in open THEN b ELSE @[f]],
+                                !.pend = SelectSeq(@, LAMBDA r : ~\E o2 \in r : o2[1] \in open)]
+       IN [s1 EXCEPT !.stage[e] = "passingOn", !.passReq[In(e)] = TRUE,
+                     !.bsnap[e] = IF b = 0 THEN @ ELSE b]
+
+RECURSIVE WithoutAll(_, _, _)
+WithoutAll(s, os, lost) ==
+  IF os = {} THEN s
+  ELSE LET o == CHOOSE x \in os : TRUE IN WithoutAll(WithoutSnap(s, o, lost), os \ {o}, lost)
+
+\* L unanswered: the k-th read asked is not answered in its time. Its late
+\* answer is no one's (L snapshotTaken: nobody waits for it); a Continue's
+\* read is given up, and the page's next read is where recording resumes;
+\* the wrap-up waits for its last read no more.
+OnReadFailed(s, k, lost) ==
+  LET r == s.pend[k]
+      s1 == [s EXCEPT !.pend = SubSeq(@, 1, k - 1) \o SubSeq(@, k + 1, Len(@))]
+  IN IF ~During(s) THEN s1
+     ELSE LET s2 == WithoutAll(s1, r, lost)
+          IN Proceed(IF <<0, "final">> \in r THEN [s2 EXCEPT !.finals = "in"] ELSE s2, FALSE)
 
 \* L traceStarted
 OnTraceStarted(s) ==
@@ -812,9 +873,10 @@ OnPicking(s, on) ==
 \* settles again. With none, the page's last fill takes the text alone; with
 \* no report on the page since Record or Continue, the revision is of a fill
 \* from before, and starts a fill of its own (bug B6, fixed). Else it is lost.
-OnRevised(s, i) ==
-  IF ~During(s) THEN [s EXCEPT !.revLost[i] = TRUE]
-  ELSE LET o == Last(s, {f \in Elems(s.lst) : s.ent[f] = "rep" /\ f \notin s.els}) IN
+OnRevised(s0, i) ==
+  IF ~During(s0) THEN [s0 EXCEPT !.revLost[i] = TRUE]
+  ELSE LET s == [s0 EXCEPT !.pgMoved = TRUE]
+           o == Last(s, {f \in Elems(s.lst) : s.ent[f] = "rep" /\ f \notin s.els}) IN
        IF o = 0 THEN
          IF s.pgLastFill # 0
          THEN IF kind[In(s.pgLastFill)] = "type"
@@ -1011,11 +1073,11 @@ Init ==
   /\ phase = "off" /\ boot = "none" /\ resumed = FALSE /\ picking = "off"
   /\ goal = "none" /\ gateOffAsked = FALSE /\ gateOff = FALSE /\ finals = "no" /\ switchingOff = FALSE
   /\ traceStarting = FALSE /\ discarding = FALSE /\ stopping = FALSE
-  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = FALSE /\ pgLatest = 0 /\ lst = <<>>
+  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = FALSE /\ pgLatest = 0 /\ pgMoved = FALSE /\ lst = <<>>
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]
-  /\ bsnap = [e \in Ids |-> 0] /\ asnap = [e \in Ids |-> 0] /\ pend = <<>>
+  /\ bsnap = [e \in Ids |-> 0] /\ asnap = [e \in Ids |-> 0] /\ noAfter = {} /\ pend = <<>>
   /\ passReq = [i \in Inputs |-> FALSE] /\ gateQ = <<>> /\ modeQ = <<>> /\ traceQ = <<>>
   /\ tl = {} /\ tlAtPause = {} /\ dis = {} /\ kept = {}
   /\ revLost = [i \in Inputs |-> FALSE]
@@ -1115,8 +1177,8 @@ YouDiscard(e) ==
   /\ PersonMayAct /\ Reviewable /\ Pressable("discard") /\ e \in Listed \ dis
   /\ dis' = dis \cup {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
-                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest, pgMoved,
+                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
                  pgReported, pgLastFill, els, pic,
@@ -1128,8 +1190,8 @@ YouRestore(e) ==
   /\ PersonMayAct /\ Reviewable /\ Pressable("discard") /\ e \in dis
   /\ dis' = dis \ {e}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest,
-                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, pend,
+                 traceStarting, discarding, stopping, savedTold, storage, gen, pgHold, pgLatest, pgMoved,
+                 lst, ent, stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend,
                  passReq, gateQ, modeQ, traceQ, tl, tlAtPause, kept, revLost,
                  pkg, saves, pkgHas, pkgDis, holdPg, keptSn, newT, pkgNew,
                  pgReported, pgLastFill, els, pic,
@@ -1390,6 +1452,22 @@ SnapshotFails ==
   /\ UNCHANGED <<pageVars, personVars, surfVars, miscVars>>
   /\ Publish
 
+\* RS: the time a read was given passes before the page answers it, as on a
+\* page that is never read (#1525). Only a read that held inputs, the
+\* wrap-up or a Continue wait for: a read an assertion or an input known
+\* from its report waits for is left out (README). A read in flight may run
+\* out too: its answer then belongs to nothing (ReadHeard). The clock moves,
+\* as the lost read's stamp, in the document the page is at.
+ReadTimesOut ==
+  /\ ReadsTimeOut /\ Alive /\ page = "open" /\ ~FastFlying
+  /\ \E k \in 1..Len(pend) :
+       /\ \A o \in pend[k] : IF o[1] = 0 THEN TRUE ELSE ent[o[1]] \in {"click", "key"}
+       /\ Commit(OnReadFailed(Eng, k, clock + 1))
+  /\ clock' = clock + 1 /\ docOf' = Append(docOf, doc)
+  /\ UNCHANGED <<page, doc, navFlying, gateOn, gateStart, pickPg, unpick, mode,
+                 tracing, readFly, seen, personVars, surfVars, miscVars>>
+  /\ Publish
+
 \* SB settle: the page is a Settled Page, or the deadline passed. Told also
 \* for a page that is gone.
 PageSettles(e) ==
@@ -1509,8 +1587,8 @@ SavedArrives ==
   /\ savedTold' = FALSE
   /\ storage' = Asked
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 traceStarting, discarding, stopping, gen, pgHold, pgLatest, pgMoved, lst, ent,
+                 stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1538,8 +1616,8 @@ PackageWriteFails ==
   /\ phase' = "failed" /\ savedTold' = FALSE /\ storage' = Asked
   /\ pkg' = "none" /\ pkgHas' = {} /\ pkgDis' = {} /\ pkgNew' = <<>>
   /\ UNCHANGED <<boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 traceStarting, discarding, stopping, gen, pgHold, pgLatest, pgMoved, lst, ent,
+                 stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, saves,
                  holdPg, keptSn, newT, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1572,8 +1650,8 @@ StorageLands ==
   /\ storage = "asked"
   /\ storage' \in {"saved", "failed"}
   /\ UNCHANGED <<phase, boot, resumed, picking, goal, gateOffAsked, gateOff, finals, switchingOff,
-                 traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest, lst, ent,
-                 stage, rep, repOf, unrep, revised, bsnap, asnap, pend, passReq, gateQ,
+                 traceStarting, discarding, stopping, savedTold, gen, pgHold, pgLatest, pgMoved, lst, ent,
+                 stage, rep, repOf, unrep, revised, bsnap, asnap, noAfter, pend, passReq, gateQ,
                  modeQ, traceQ, tl, tlAtPause, dis, kept, revLost, pkg, saves, pkgHas,
                  pkgDis, holdPg, keptSn, newT, pkgNew, shown, txt, fin, pos,
                  pgReported, pgLastFill, els, pic,
@@ -1709,7 +1787,7 @@ EngineNext ==
   \/ \E i \in Inputs : TypeHeld(i) \/ TypeReaches(i) \/ TypeMore(i)
   \/ GatesUnpick \/ \E i \in Inputs : HeldMessageArrives(i)
   \/ \E i \in Inputs : PassGone(i) \/ PassOn(i)
-  \/ SnapshotTaken \/ SnapshotFails
+  \/ SnapshotTaken \/ SnapshotFails \/ ReadTimesOut
   \/ \E e \in Ids : PageSettles(e)
   \/ \E i \in Inputs : ReportArrives(i) \/ RevisionArrives(i) \/ ReportArrivesAsRevision(i)
   \/ GateSwitchLands \/ ModeLands \/ TraceLands \/ SavedArrives \/ StorageLands
@@ -1767,9 +1845,10 @@ R01_HeldClickReachesThePageOnce ==
   /\ ~Alive => \A i \in Inputs : HeldHere(i) /\ page = "open" => passReq[i]
 
 \* 2. Every recorded Interaction gets one "before" and one "after"; one whose
-\*    page closed keeps its "before" only.
+\*    page closed, or whose "after" was not answered in time, keeps its
+\*    "before" only (L withoutItsSnapshot).
 R02_OneBeforeOneAfter ==
-  \A e \in tl \cup pkgHas : bsnap[e] # 0 /\ (asnap[e] # 0 \/ page = "closed")
+  \A e \in tl \cup pkgHas : bsnap[e] # 0 /\ (asnap[e] # 0 \/ page = "closed" \/ e \in noAfter)
 
 \* 3. While stopped, nothing is added to the timeline and input reaches the
 \*    page untouched. Tracing keeps running.
@@ -2286,7 +2365,7 @@ StartedRecording ==
   /\ phase = "recording" /\ boot = "none" /\ resumed = FALSE /\ picking = "off"
   /\ goal = "none" /\ gateOffAsked = FALSE /\ gateOff = FALSE /\ finals = "no" /\ switchingOff = FALSE
   /\ traceStarting = FALSE /\ discarding = FALSE /\ stopping = FALSE
-  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = TRUE /\ pgLatest = 0 /\ lst = <<>>
+  /\ savedTold = FALSE /\ storage = "none" /\ gen = 0 /\ pgHold = TRUE /\ pgLatest = 0 /\ pgMoved = FALSE /\ lst = <<>>
   /\ ent = [e \in Ids |-> "none"] /\ stage = [e \in Ids |-> "none"]
   /\ rep = [e \in Ids |-> FALSE] /\ repOf = [e \in Ids |-> 0]
   /\ unrep = [e \in Ids |-> FALSE] /\ revised = [e \in Ids |-> FALSE]

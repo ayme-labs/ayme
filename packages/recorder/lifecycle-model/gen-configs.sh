@@ -3,7 +3,7 @@
 # Constants, in order:
 #   N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick
 #   LateRevisions LeaveOutB2 LateTypingReport, then after what to check, when
-#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails
+#   not the defaults: SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails ReadsTimeOut
 # LeaveOutB2 leaves a known limit out, to check every other path of the same
 # rule; it is not a fix. LateRevisions, LateTypingReport, SlowFlush,
 # SlowPickEnd and SlowHeldMessage allow five races. Buttons is what the person
@@ -35,10 +35,10 @@ WPROBES="P15_NeverTextAheadOfRows P16_NeverStopsWithTextAhead P17_NeverFinishesW
 # those in which the package cannot be written (WriteFails).
 SAVES=" Rules-Ends Rules-StartRecording Surfaces TimeLimit-Holds Races Probes-Storage "
 WRITEFAILS=" Rules-Ends Probes-Storage "
-mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails]
+mk() { # name "INIT/NEXT or SPECIFICATION" N MaxDoc MaxGen MaxRounds MaxKeys MaxStops Closes Surfaces TimeLimit FinishTwice Quick LateRevisions LeaveOutB2 LateTypingReport "what to check" [SlowFlush SlowPickEnd Buttons SlowHeldMessage StartBlank ActOnBlank ContinueOnBlank PageNavigates NavAfterReports TypeAfterStopOnNewPage ReadHeardLate SameFieldElsewhere AddressChanges StartFails ReadsTimeOut]
   name=$1; head=$2; shift 2
   laterev=${12}; lob2=${13}; latetype=${14}; what=${15}
-  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}; startfails=${29:-FALSE}
+  slowflush=${16:-FALSE}; slowpick=${17:-FALSE}; buttons=${18:-$LR}; slowheld=${19:-FALSE}; startblank=${20:-FALSE}; actonblank=${21:-FALSE}; continueonblank=${22:-FALSE}; pagenavigates=${23:-FALSE}; navafterreports=${24:-TRUE}; typeafterstop=${25:-TRUE}; readlate=${26:-FALSE}; samefield=${27:-FALSE}; addrchanges=${28:-FALSE}; startfails=${29:-FALSE}; readstimeout=${30:-FALSE}
   case $SAVES in *" $name "*) savestorage=TRUE ;; *) savestorage=FALSE ;; esac
   case $WRITEFAILS in *" $name "*) writefails=TRUE ;; *) writefails=FALSE ;; esac
   {
@@ -72,6 +72,7 @@ CONSTANTS
   SameFieldElsewhere = $samefield
   AddressChanges = $addrchanges
   StartFails = $startfails
+  ReadsTimeOut = $readstimeout
   SaveStorage = $savestorage
   WriteFails = $writefails
   Buttons = $buttons
@@ -148,6 +149,14 @@ mk Rule7-Navigation "$IN" 2 2   1   1   1    0     $F     $F   $F   $F    $T    
 # and before "Paused", with the pages no longer holding.
 mk Rule7-TypeAfterStopOnNewPage "$IN" 2 2 1 1 1 0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANT F7_MeasuredFromFirstKey"
 mk Rules-WithoutB2  "$IN" 2 1   1   1   1    0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded"
+# A read that held inputs, the wrap-up or a Continue wait for may not be
+# answered in its time (#1525): the held input goes on from the page's latest
+# read, or a lost one, and an "after" is given up.
+mk Rules-ReadsTimeOut "$IN" 2 1  1   1   1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded D1_TypingWaitsForSomethingNewer
+$PROPS" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $F $T
+mk Rules-Pages-ReadsTimeOut "$IN" 2 2 1 1  1    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS $HOLD $FILLS X5_StopWindowIsRecorded
+$PROPS" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $F $T
+mk Rules-WithoutB2-ReadsTimeOut "$IN" 2 1 1 1 1  0     $F     $F   $F   $F    $T    $F      $T $F "INVARIANTS F7s_MeasuredStrictly X2_SnapshotsInTimeOrder X8_StartsNoLaterThanTheInput X4_WrapUpNeverGetsStuck X5_StopWindowIsRecorded" $F $F "$LR" $F $F $F $F $F $T $T $F $F $F $F $T
 # Known limits: each its own path.
 mk Limit-TypingThenTyping "$IN" 2 1 1 1  0    0     $F     $F   $F   $F    $T    $F      $F $F "INVARIANTS N3_TypingThenTypingInTimeOrder N5_RecordingInTimeOrder N6_RecordingStartsInTime"
 mk Limit-ClosedPageWaits "$IN" 1 1 1 1   0    0     $T     $F   $F   $F    $T    $F      $F $F "INVARIANT X4_WrapUpNeverGetsStuck"

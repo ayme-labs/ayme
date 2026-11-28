@@ -53,7 +53,9 @@ each function named in a comment beside the operator that models it (search
   `assertVisibility`, `leaveAssertVisibility`, `pickNow`, `pickingChanged`,
   `decidable`, `decide`,
   `pageNavigated` (with `leftDocument`, `elsewhere` and `hadVisit`),
-  `keepRead`, `atRecord`, `causeOf`, to `shown` and `offered`.
+  `keepRead`, `atRecord`, `causeOf`, `unanswered` and `withoutItsSnapshot`
+  for a read that runs out of its time (`ReadsTimeOut`; `moved` on the
+  page's gate), to `shown` and `offered`.
 - `packages/recorder/src/playwright/infrastructure/live/stockBrowser.ts`:
   `passOnHeld`, `passOn`, `holdInputs`, `letInputsThrough`, `reportInteractions`,
   `everyReportDelivered`, `saveStorage`, `pick` (Playwright's mode first,
@@ -72,7 +74,8 @@ each function named in a comment beside the operator that models it (search
   `changedBefore`, `tell`, `package`) and
   `recorded.ts` (`TimelineAddition`).
 - `packages/recorder/src/session/application/recorderSession.ts`
-  (`publishEntries`, the package write telling `saveFailed`, the time limit),
+  (`publishEntries`, the package write telling `saveFailed`, the time limit,
+  and a read's time running out, `limit`),
   `packages/recorder/src/engine/startRecorder.ts` (Record sent first, for
   `--start-recording`),
   `packages/recorder/src/server/infrastructure/toolbarBridge.ts`,
