@@ -348,6 +348,35 @@ it("a process that ends before it answers is answered with what it printed", asy
   expect(answer).toEqual({ ok: false, text: "Cannot find module ayme" });
 });
 
+it("a socket path of the most bytes a local socket's path has is listened on", async () => {
+  const { served: refused } = await serve({
+    socket: join(folder("socket"), `${"long".repeat(30)}.sock`),
+  });
+  if (refused._tag !== "Failure") throw new Error("listened");
+  const most = Number(/at most (\d+) bytes/.exec(refused.failure.message)![1]);
+  const parent = folder("socket");
+  const socket = join(
+    parent,
+    // The rest of the path, after the folder and its separator.
+    "s".repeat(most - Buffer.byteLength(parent) - 1)
+  );
+  expect(Buffer.byteLength(socket)).toBe(most);
+
+  const { served } = await serve({ socket });
+
+  expect(served._tag).toBe("Success");
+});
+
+it("a Session served without the Inspector's script serves no Inspector window", async () => {
+  const { served } = await claimAndServe();
+  if (served._tag !== "Success") throw served.failure;
+
+  expect(await askSession(place, { inspector: { window: {} } })).toEqual({
+    ok: false,
+    text: "This Session serves no Inspector window.",
+  });
+});
+
 it("a socket path too long for a local socket fails the start with why", async () => {
   const { served } = await serve({
     socket: join(folder("socket"), `${"long".repeat(30)}.sock`),
@@ -732,16 +761,22 @@ function scriptedOpener() {
     claim: (generation: number) =>
       channel.emit("message", { claimed: generation }),
     goAway: () => opener.disconnect(),
+    connected: () => opener.connected,
   };
 }
 
 /** Claims the folder for this process, as the opening command does, and
  * runs the Session's process on a scripted browser in this process. */
-function runProcess(opener: Opener) {
-  const { socket } = sessionFolder();
+function runProcess(
+  opener: Opener,
+  {
+    socket = sessionFolder().socket,
+    held,
+  }: { socket?: string; held?: true } = {}
+) {
   const claim = claimRecord(place, { ...thisProcess(), socket });
   if (!("generation" in claim)) throw new Error("the folder has a Session");
-  const { layer, browser } = scriptedBrowser();
+  const { layer, browser } = scriptedBrowser(held ? { held } : {});
   const exitCode = serveProcess(
     { projectDir, socket, request: { open: { headed: false } } },
     opener,
@@ -751,7 +786,7 @@ function runProcess(opener: Opener) {
 }
 
 it("a start whose opening command goes away right after sending the claim ends, and leaves no browser and no Session", async () => {
-  const { opener, claim, goAway } = scriptedOpener();
+  const { opener, claim, goAway, told } = scriptedOpener();
   const { generation, exitCode, browser } = runProcess(opener);
 
   // Before the process watches for its opener going away.
@@ -763,15 +798,106 @@ it("a start whose opening command goes away right after sending the claim ends, 
   expect(browser.asked.length === 0 || browser.released).toBe(true);
   expect(browser.hostedWith).toEqual([]);
   expect(liveRecord(place)).toBeUndefined();
+  // Nobody is there to tell.
+  expect(await pendingAfter(told, 0)).toBe(true);
 });
 
-it("a Session's process marks its claim started before it answers the start, and serves the Session until it ends", async () => {
+it("a process whose opening command went away before the process looked for its claim ends, and asks for no browser", async () => {
+  const { opener, goAway } = scriptedOpener();
+  goAway();
+
+  const { exitCode, browser } = runProcess(opener);
+
+  expect(await exitCode).toBe(1);
+  expect(browser.asked).toEqual([]);
+});
+
+it("a process whose opening command goes away before sending the claim ends, and asks for no browser", async () => {
+  const { opener, goAway } = scriptedOpener();
+  const { exitCode, browser } = runProcess(opener);
+
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  expect(browser.asked).toEqual([]);
+});
+
+it("a start whose opening command goes away while the browser opens ends, and leaves no Session", async () => {
+  const { opener, claim, told, goAway } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener, {
+    held: true,
+  });
+  claim(generation);
+  await browser.until(() => browser.asked.length === 1);
+
+  goAway();
+
+  expect(await exitCode).toBe(1);
+  expect(liveRecord(place)).toBeUndefined();
+  expect(await pendingAfter(told, 0)).toBe(true);
+});
+
+it("a start that fails is told why, and its Session shows as starting until then", async () => {
   const { opener, claim, told, listedWhenTold } = scriptedOpener();
+  const { generation, exitCode, browser } = runProcess(opener, {
+    held: true,
+  });
+  claim(generation);
+  await browser.until(() => browser.asked.length === 1);
+
+  browser.failOpen("No Chromium here.");
+
+  expect(await told).toMatchObject({
+    ok: false,
+    text: expect.stringContaining("No Chromium here."),
+  });
+  expect(listedWhenTold()).toMatchObject({
+    data: { sessions: [{ name: "default", starting: true }] },
+  });
+  expect(await exitCode).toBe(1);
+  expect(liveRecord(place)).toBeUndefined();
+});
+
+it("a process that cannot serve its Session tells its opening command why", async () => {
+  const { opener, claim, told } = scriptedOpener();
+  const { generation, exitCode } = runProcess(opener, {
+    socket: join(folder("socket"), `${"long".repeat(30)}.sock`),
+  });
+
+  claim(generation);
+
+  expect(await told).toEqual({
+    ok: false,
+    text: expect.stringMatching(/^ayme cannot listen at /),
+  });
+  expect(await exitCode).toBe(1);
+});
+
+it.each(["SIGINT", "SIGTERM", "SIGHUP"] as const)(
+  "%s ends a Session's process as a stop does",
+  async (signal) => {
+    const { opener, claim, told } = scriptedOpener();
+    const { generation, exitCode, browser } = runProcess(opener);
+    claim(generation);
+    expect(await told).toMatchObject({ ok: true });
+
+    // As the system tells it, to the process's own listeners.
+    process.emit(signal);
+
+    expect(await exitCode).toBe(0);
+    expect(browser.released).toBe(true);
+    expect(liveRecord(place)).toBeUndefined();
+  }
+);
+
+it("a Session's process marks its claim started before it answers the start, lets its opening command go, and serves the Session until it ends", async () => {
+  const { opener, claim, told, listedWhenTold, connected } = scriptedOpener();
   const { generation, exitCode } = runProcess(opener);
 
   claim(generation);
 
   expect(await told).toMatchObject({ ok: true });
+  expect(connected()).toBe(false);
   expect(listedWhenTold()).toMatchObject({
     data: {
       sessions: [{ name: "default", pid: process.pid, starting: false }],
