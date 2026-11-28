@@ -486,6 +486,36 @@ it("Playwright reads its own fields of a kept object as they are, even once the 
   expect(frameLocator._frame).toBe(frame);
 });
 
+it("a locator handed to another locator of the same Page is taken as one of its frame, under a Host that decides", () => {
+  const frame = clientObject("Frame", { name: () => "main" });
+  // A Locator as Playwright makes one: it holds its Frame, and refuses
+  // another Locator whose Frame is not the very same object.
+  class FakeFrameBound {
+    readonly _frame = frame;
+    constructor(readonly _selector: string) {}
+    or(other: FakeFrameBound) {
+      if (other._frame !== this._frame)
+        throw new Error("Locators must belong to the same frame.");
+      return new FakeFrameBound(`${this._selector} >> or ${other._selector}`);
+    }
+    evaluateAll() {}
+    nth(index: number) {
+      return new FakeFrameBound(`${this._selector} >> nth=${index}`);
+    }
+  }
+  const raw = { locator: (selector: string) => new FakeFrameBound(selector) };
+  const wrapped = instrumentedPage(
+    raw as unknown as AymePage,
+    undefined,
+    noRef,
+    hostDeciding()
+  ) as unknown as typeof raw;
+
+  const either = wrapped.locator("toast").or(wrapped.locator("alert"));
+
+  expect(either._selector).toBe("toast >> or alert");
+});
+
 it("a kept object's call that answers at once, and a Dialog's answer, tell the Host they cannot be held", async () => {
   const { raw } = pageWithHandles();
   const host = hostDeciding();

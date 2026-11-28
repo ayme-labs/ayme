@@ -205,6 +205,10 @@ export function instrumentedPage(
           isPage(target)
         )
           return device(property);
+        // Playwright compares its own fields when it is handed a locator
+        // back, as `or()` does with the two locators' frames.
+        if (typeof property === "string" && property.startsWith("_"))
+          return member;
         if (typeof member !== "function") return gated(member);
         const perform = (args: unknown[]) => {
           const target = resolve();
