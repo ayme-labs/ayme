@@ -522,10 +522,21 @@ export const SPEC_ONLY = new Map([
 function testTitles(path, text) {
   const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
   const titles = [];
-  const isRegistration = (n) => ts.isStatement(n) && Boolean(registration(n));
   (function visit(node) {
-    const found = isRegistration(node) && registration(node);
-    if (found && !has(found.fn.body, isRegistration)) titles.push(found.title);
+    const callee = ts.isCallExpression(node) && node.expression;
+    const [title] = callee ? node.arguments : [];
+    const name = !callee
+      ? undefined
+      : ts.isPropertyAccessExpression(callee)
+        ? ts.isIdentifier(callee.expression) && callee.name.text
+        : ts.isIdentifier(callee) &&
+          (callee.text === "describe" ? "describe" : "test");
+    const registers =
+      ["test", "skip", "only", "describe"].includes(name) &&
+      title &&
+      ts.isStringLiteralLike(title) &&
+      isFunction(node.arguments.at(-1));
+    if (registers && name !== "describe") titles.push(title.text);
     else ts.forEachChild(node, visit);
   })(file);
   return titles;
@@ -538,10 +549,11 @@ export function checkSpecs({
   specOnly = SPEC_ONLY,
 } = {}) {
   const tests = join(root, "tests");
+  // By path under tests/, as the runners find them.
   const named = (suffix) =>
-    readdirSync(tests)
-      .filter((name) => name.endsWith(suffix))
-      .map((name) => name.slice(0, -suffix.length));
+    walk(tests, suffix).map((path) =>
+      relative(tests, path).slice(0, -suffix.length)
+    );
   const specs = named(".spec.ts");
   const twins = named(".e2e.ts");
   const problems = [];

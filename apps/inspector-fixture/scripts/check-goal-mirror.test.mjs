@@ -266,6 +266,17 @@ test("the pair's Playwright spec holds its e2e twin's tests", () => {
   assert.equal(specProblemsWith(new Map()), "");
 });
 
+test("counts a test with an expression body, and not an empty describe", () => {
+  assert.match(
+    specProblemsWith(new Map(), [
+      spec,
+      'test("adds an item", async () => {});',
+      'test("adds an item", async () => {});\ntest("extra", async () => Promise.resolve());\ntest.describe("empty suite", () => {});',
+    ]),
+    /^pair\.spec\.ts has "extra", and pair\.e2e\.ts does not$/
+  );
+});
+
 test("rejects a spec title its e2e twin lacks", () => {
   assert.match(
     specProblemsWith(new Map(), [spec, "adds an item", "adds a loaf"]),

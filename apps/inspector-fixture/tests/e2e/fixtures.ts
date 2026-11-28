@@ -54,8 +54,12 @@ export async function bringPanelToFront(inspector: Inspector) {
 /** `untilThePanelHasLooked` of `../fixtures.ts`, which says why. */
 export async function untilThePanelHasLooked(inspector: Inspector) {
   await expect
-    .poll(() => inspector.navigator.legendItems())
-    .not.toContain("0 refs");
+    .poll(async () =>
+      (await inspector.navigator.legendItems()).some((item) =>
+        /^[1-9]\d* refs$/.test(item)
+      )
+    )
+    .toBe(true);
 }
 
 /** Both placements, for a spec whose tests run in each. */
@@ -310,14 +314,14 @@ export function testIn(
 }
 
 /**
- * The highlight Playwright draws over `element` now: its outline style
- * ("dashed" for what is hovered, "solid" for the selection) and colour, or
- * none. The page's own elements carry no mark for it.
+ * How the page outlines `element` now, by the highlight Playwright draws over
+ * it: "dashed" hovered, "solid" selected, else "none". The page's own
+ * elements carry no mark for it.
  */
-export function highlightOf(element: On, browser: Browser) {
+export function outline(element: On, browser: Browser) {
   return async () => {
     const box = await (await element.front()).boundingBox();
-    if (!box) return { style: "none", color: "" };
+    if (!box) return "none";
     return browser.evaluate((rect) => {
       const boxes = [...document.querySelectorAll("x-pw-glass")].flatMap(
         (glass) => [
@@ -335,15 +339,7 @@ export function highlightOf(element: On, browser: Browser) {
           near(at.height, rect.height)
         );
       });
-      return hit
-        ? { style: hit.style.outlineStyle, color: hit.style.outlineColor }
-        : { style: "none", color: "" };
+      return hit ? hit.style.outlineStyle : "none";
     }, box);
   };
-}
-
-/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
-export function outline(element: On, browser: Browser) {
-  const read = highlightOf(element, browser);
-  return async () => (await read()).style;
 }

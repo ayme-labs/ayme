@@ -81,7 +81,7 @@ external placement, switching to the Inspector's tab is part of the goal,
 which the agent does as it sees fit, except where
 [`bringPanelToFront`](tests/e2e/fixtures.ts) says otherwise. A first run records each goal into
 `.e2e/goals-cache/`, and later runs replay it without the model, except for
-a step that changes no control, such as dragging the panel's edge: e2e saves
+a step that changes no control: e2e saves
 nothing for it, so it calls the model on every run, and a warm run needs the
 login too. The external placement's `ayme mcp` gets a port derived from the
 checkout's path, which `AYME_E2E_MCP_PORT` overrides. `pnpm lint` also runs
@@ -100,7 +100,4 @@ and the one command per arm that measures them are in
 Known costs of keeping the goal files to their twins' shape:
 
 - A long test costs more in the agent arms: each tool's page (toolsLens)
-  runs 24 goals in one agent session, and the header's menus and switches
-  (inspector) 13.
-- The Model lens hover goal runs inside its twin's `expect.poll`, so on a
-  slow turn the poll's time limit can cut it off.
+  runs 24 goals in one agent session.

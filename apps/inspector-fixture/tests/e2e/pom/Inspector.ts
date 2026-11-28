@@ -224,11 +224,6 @@ export type ModelPaneName = "On this page" | "Page object models";
  */
 @ayme({ present: (self: Part) => Part.lensShown(self, "Model") })
 export class ModelLens extends Part {
-  /** The object tree, "On this page". */
-  get objectTree(): On {
-    return this.on((root) => root.getByRole("tree", "Page objects"));
-  }
-
   /** The Page Object Model list, "Page object models". */
   get modelList(): On {
     return this.on((root) => root.getByRole("list", "Page object models"));
@@ -754,10 +749,6 @@ export class RefField extends Part {
     await this.open();
     await (await this.nodes.within((nodes) => nodes.first()).front()).waitFor();
     await this.pickButton.click();
-  }
-
-  async isPicking() {
-    return (await this.pickButton.getAttribute("aria-pressed")) === "true";
   }
 }
 

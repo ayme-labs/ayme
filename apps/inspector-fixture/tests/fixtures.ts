@@ -19,7 +19,7 @@ export { expect } from "@playwright/test";
 /**
  * Playwright draws the Inspector's highlights in an overlay under `<html>`
  * whose shadow root is closed. Opens it, before the page's scripts run, so
- * `highlightOf` can read the boxes.
+ * `outline` can read the boxes.
  */
 const openHighlightOverlay = () => {
   const attachShadow = Element.prototype.attachShadow;
@@ -32,11 +32,11 @@ const openHighlightOverlay = () => {
 };
 
 /**
- * The highlight Playwright draws over `element` now: its outline style
- * ("dashed" for what is hovered, "solid" for the selection) and colour, or
- * none. The page's own elements carry no mark for it.
+ * How the page outlines `element` now, by the highlight Playwright draws over
+ * it: "dashed" hovered, "solid" selected, else "none". The page's own
+ * elements carry no mark for it.
  */
-export function highlightOf(element: Locator) {
+export function outline(element: Locator) {
   return () =>
     element.evaluate((target) => {
       const rect = target.getBoundingClientRect();
@@ -56,16 +56,8 @@ export function highlightOf(element: Locator) {
           near(at.height, rect.height)
         );
       });
-      return box
-        ? { style: box.style.outlineStyle, color: box.style.outlineColor }
-        : { style: "none", color: "" };
+      return box ? box.style.outlineStyle : "none";
     });
-}
-
-/** How the page outlines `element`: "dashed" hovered, "solid" selected, else "none". */
-export function outline(element: Locator) {
-  const read = highlightOf(element);
-  return async () => (await read()).style;
 }
 
 /**
@@ -75,7 +67,7 @@ export function outline(element: Locator) {
  * down under the pointer.
  */
 export async function untilThePanelHasLooked(inspector: Inspector) {
-  await expect(inspector.navigator.legend).not.toContainText(/(^|\D)0 refs/);
+  await expect(inspector.navigator.legend).toContainText(/(^|\D)[1-9]\d* refs/);
 }
 
 /** The Caller mark of a run made from the panel, as Runs shows it. */
