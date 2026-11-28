@@ -7765,3 +7765,163 @@ describe("the lifecycle, for a middle click", () => {
     expect(steps(todo)).toEqual([{ type: "check", button: undefined }]);
   });
 });
+
+// Issue #1533: a click the browser gave to another element than the one
+// under the pointer is not held, since sent on again it would reach that
+// one. The page tells of it like a held click, with the time it reached the
+// page.
+describe("the lifecycle, for a click that reached its page untouched", () => {
+  const untouched = (input: InputId, reachedAt = 15): Happening => ({
+    kind: "inputHeld",
+    input,
+    page: page1,
+    held: { kind: "click", count: 1, reachedAt },
+  });
+  const reportOf = (selector: string): Happening => ({
+    kind: "interactionReported",
+    page: page1,
+    report: { ...click, selector },
+  });
+  /** The Interactions written, each with its report's selector. */
+  const written = (todo: readonly (readonly ToDo[])[]) =>
+    todo.flat().flatMap((item) =>
+      item.kind === "timeline" && item.add.kind === "interaction"
+        ? [
+            {
+              selector: item.add.interaction.report.selector,
+              before: item.add.interaction.before,
+              after: item.add.interaction.after,
+              at: item.add.interaction.at,
+            },
+          ]
+        : []
+    );
+  /** A click recorded from start to end: the page has a snapshot. */
+  const afterOneClick = [opened, ...started, ...oneClick, reported];
+
+  it("starts from the page's latest snapshot, since one taken now would show what the click did, and is never passed on", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      untouched(input2),
+      settled(input2),
+      taken(snapshot3),
+      reportOf("body"),
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled(input2)],
+      [takeSnapshot(snapshot3)],
+      [keep(snapshot3), letThrough(input2)],
+      [
+        {
+          kind: "timeline",
+          add: {
+            kind: "interaction",
+            interaction: {
+              page: page1,
+              report: { ...click, selector: "body" },
+              before: snapshot2,
+              after: snapshot3,
+              at: 15,
+            },
+          },
+        },
+      ],
+    ]);
+  });
+
+  it("takes a snapshot to start from when its page has none, and is not passed on then either", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      taken(snapshot1),
+    ]);
+
+    expect(todo.slice(-2)).toEqual([
+      [takeSnapshot(snapshot1)],
+      [keep(snapshot1), waitForSettled(input1)],
+    ]);
+  });
+
+  it("takes the report that comes while it waits for its snapshot: the click is at its page already", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      reportOf("body"),
+      taken(snapshot1),
+      settled(input1),
+      taken(snapshot2),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: "body", before: snapshot1, after: snapshot2, at: 15 },
+    ]);
+  });
+
+  it("keeps its place before a click held after it: each gets its own report, and one snapshot is between them", () => {
+    const { todo } = run([
+      ...afterOneClick,
+      untouched(input2),
+      clickHeld(input3),
+      taken(snapshot3),
+      passedOn(input3, 30),
+      reportOf("body"),
+      reportOf("option"),
+      settled(input3),
+      taken(snapshot4),
+    ]);
+
+    expect(written(todo)).toEqual([
+      { selector: click.selector, before: snapshot1, after: snapshot2, at: 20 },
+      { selector: "body", before: snapshot2, after: snapshot3, at: 15 },
+      { selector: "option", before: snapshot3, after: snapshot4, at: 30 },
+    ]);
+  });
+
+  it("goes on without a snapshot that cannot be taken, with nothing to pass on, and is not recorded", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      failed(takeSnapshot(snapshot1)),
+      settled(input1),
+      taken(snapshot2),
+      reportOf("body"),
+    ]);
+
+    expect(todo.slice(-4)).toEqual([
+      [waitForSettled(input1)],
+      [takeSnapshot(snapshot2)],
+      [keep(snapshot2), letThrough(input1)],
+      [],
+    ]);
+  });
+
+  it("is not passed on when the wrap-up's time limit passes while it waits for its snapshot", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      stop,
+      { kind: "timeLimitPassed" },
+    ]);
+
+    expect(todo.at(-1)).toEqual([holdNoMore, stopReporting]);
+  });
+
+  it("keeps Assert visibility from waiting: nothing is passed on that picking would swallow", () => {
+    const { todo } = run([
+      opened,
+      ...started,
+      untouched(input1),
+      { kind: "command", command: { type: "assertVisibility" } },
+    ]);
+
+    expect(todo.at(-1)).toEqual([
+      { kind: "browser", ask: { kind: "pick", on: true } },
+      reply("applied"),
+    ]);
+  });
+});
